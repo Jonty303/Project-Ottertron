@@ -1,21 +1,19 @@
 # Roadmap
 
-## v0.3 — waves and doughnut varieties
+## v0.4 — critical damage and explosive Colin deaths
 
-- [x] Five Colins in the starting wave
-- [x] Next wave automatically spawns after all previous enemies die
-- [x] Ten waves / 50 kills for victory, zero player HP for defeat
-- [x] Progress and weapon stats in HUD
-- [x] Initial doughnuts smaller (0.78×) and slower (315px/s)
-- [x] Distinct damage, speed and size power-ups
-- [x] Size upgrades scale art and collision shape
-- [x] Power-up reward on wave completion
-- [x] Headless tests for 50-kill run, defeat and upgrades
-- [ ] Controller playtest to tune difficulty with five aura users
-- [ ] Replace procedural character artwork with approved transparent 64×64 sprites
+- [x] Colin health raised to 10 HP
+- [x] 1% critical chance on doughnuts; critical hits deal 2× and show special text
+- [x] 25% chance that defeated Colin remains as a flashing red explosive corpse
+- [x] Two-second warning, visible 128px explosion, 1–10 random damage
+- [x] Explosion affects otter and other living Colins, with potential chain reactions
+- [x] Waves wait for detonations before spawning the next five Colins
+- [x] Headless tests for forced criticals, non-criticals, delayed blasts and chain reactions
+- [ ] Controller playtest to tune the 10 HP enemies and explosion difficulty
+- [ ] Replace temporary character art with approved pixel sprites
 
 ## Next
 
-- [ ] Test scaling/rewards against tougher waves and special enemies
-- [ ] Add music, hit flashes, richer pickup effects
-- [ ] Multiple square room configurations and additional enemy types
+- [ ] Add sounds and stronger visual hit feedback
+- [ ] Adjust drop rates and wave balance
+- [ ] More room types and enemy classes

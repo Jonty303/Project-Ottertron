@@ -1,12 +1,13 @@
 extends CharacterBody2D
-## Slow pursuer: short-range, escalating 1-second life drain with range hysteresis.
+## Colin: slow chase, escalating drain, and optional delayed explosive death.
 
 signal defeated
 signal aura_started
 signal aura_broken
 signal aura_tick(damage: int)
+signal explosion_requested(at: Vector2, radius: float, damage: int)
 
-@export var max_health: int = 2
+@export var max_health: int = 10
 @export var move_speed: float = 68.0
 @export var drain_start_range: float = 53.0
 @export var drain_break_range: float = 96.0
@@ -15,12 +16,21 @@ signal aura_tick(damage: int)
 @export var drain_ramp_every_ticks: int = 3
 @export var drain_max_damage: int = 4
 
-var health: int = 2
+@export_range(0.0, 1.0, 0.01) var explosion_chance: float = 0.25
+@export var explosion_delay: float = 2.0
+@export var explosion_radius: float = 128.0
+@export var explosion_damage_min: int = 1
+@export var explosion_damage_max: int = 10
+
+var health: int = 10
 var target
 var aura_active: bool = false
+var pending_explosion: bool = false
+var _explosion_remaining: float = 0.0
 var _drain_elapsed: float = 0.0
 var _ticks_completed: int = 0
 var _aura_phase: float = 0.0
+var _glow_time: float = 0.0
 
 @onready var art = $Art
 @onready var health_bar = $HealthBar
@@ -31,6 +41,20 @@ func _ready() -> void:
     add_to_group("enemies")
 
 func _process(delta: float) -> void:
+    if pending_explosion:
+        _explosion_remaining -= delta
+        _glow_time += delta
+        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 14.0)
+        art.modulate = Color(1.0, 0.08 + pulse * 0.23, 0.08 + pulse * 0.23)
+        queue_redraw()
+        if _explosion_remaining <= 0.0:
+            pending_explosion = false
+            var low: int = maxi(1, mini(explosion_damage_min, explosion_damage_max))
+            var high: int = maxi(low, maxi(explosion_damage_min, explosion_damage_max))
+            var blast_damage: int = randi_range(low, high)
+            explosion_requested.emit(global_position, explosion_radius, blast_damage)
+            queue_free()
+        return
     if aura_active:
         _aura_phase += delta
         queue_redraw()
@@ -97,15 +121,36 @@ func take_damage(amount: int) -> int:
     health -= applied
     health_bar.set_health(health, max_health)
     if health <= 0:
-        aura_active = false
-        defeated.emit()
-        queue_free()
+        _die()
     return applied
 
+func _die() -> void:
+    # Decide whether to explode BEFORE notifying the wave controller.
+    # Dying is counted once; the corpse cannot receive further damage.
+    if aura_active:
+        aura_active = false
+        queue_redraw()
+    pending_explosion = randf() < clampf(explosion_chance, 0.0, 1.0)
+    _explosion_remaining = maxf(0.01, explosion_delay)
+    velocity = Vector2.ZERO
+    remove_from_group("enemies")
+    collision_layer = 0
+    collision_mask = 0
+    $CollisionShape2D.set_deferred("disabled", true)
+    set_physics_process(false)
+    defeated.emit()
+    if not pending_explosion:
+        queue_free()
+
 func _draw() -> void:
+    if pending_explosion:
+        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 14.0)
+        var glow_color := Color(1.0, 0.07, 0.05, 0.18 + pulse * 0.23)
+        draw_circle(Vector2.ZERO, 39.0 + pulse * 8.0, glow_color)
+        draw_arc(Vector2.ZERO, 37.0 + pulse * 5.0, 0.0, TAU, 64, Color(1.0, 0.2, 0.12, 0.72), 3.0, true)
+        return
     if not aura_active:
         return
-    # Wobbling rings and a living, swaying tether to the otter.
     for ring in range(2):
         var outline := PackedVector2Array()
         for i in range(49):

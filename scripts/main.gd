@@ -6,6 +6,7 @@ const COLIN_SCENE: PackedScene = preload("res://scenes/colin.tscn")
 const DOUGHNUT_SCENE: PackedScene = preload("res://scenes/doughnut.tscn")
 const POWER_UP_SCENE: PackedScene = preload("res://scenes/power_up.tscn")
 const FLOATING_TEXT = preload("res://scripts/floating_text.gd")
+const EXPLOSION_FLASH = preload("res://scripts/explosion_flash.gd")
 
 const ROOM_SIDE: float = 960.0
 const WALL_THICKNESS: float = 28.0
@@ -19,6 +20,7 @@ const ENEMY_SPAWN_SEPARATION: float = 90.0
 var player
 var hud: Label
 var enemies: Array[Node2D] = []
+var pending_bombs: Array[Node2D] = []
 var kills: int = 0
 var wave: int = 0
 var _round_finished: bool = false
@@ -107,7 +109,7 @@ func _create_wall(at: Vector2, wall_size: Vector2) -> void:
     add_child(body)
 
 func _spawn_wave() -> void:
-    if _round_finished or kills >= TARGET_KILLS or not enemies.is_empty():
+    if _round_finished or kills >= TARGET_KILLS or not enemies.is_empty() or not pending_bombs.is_empty():
         return
     wave += 1
     var requested: int = INITIAL_WAVE_SIZE if wave == 1 else FOLLOWUP_WAVE_SIZE
@@ -119,6 +121,7 @@ func _spawn_wave() -> void:
         add_child(enemy)
         enemies.append(enemy)
         enemy.defeated.connect(_on_enemy_defeated.bind(enemy))
+        enemy.explosion_requested.connect(_on_explosion_requested.bind(enemy))
         enemy.aura_started.connect(_on_aura_started.bind(enemy))
         enemy.aura_broken.connect(_on_aura_broken.bind(enemy))
         enemy.aura_tick.connect(_on_aura_tick.bind(enemy))
@@ -156,18 +159,56 @@ func _is_good_enemy_spawn(candidate: Vector2) -> bool:
     return true
 
 func _on_enemy_defeated(enemy: Node2D) -> void:
-    # Each Colin emits once; tracking prevents a simultaneous double-count.
+    # Count each Colin once; keep pending bomb-corpses separate from living enemies.
     if _round_finished or not enemies.has(enemy):
         return
     enemies.erase(enemy)
     kills += 1
+    if enemy.pending_explosion:
+        pending_bombs.append(enemy)
+        _floating_text(enemy.global_position + Vector2(0, -66),
+            "WARNING: EXPLOSION!", Color("#ff6153"))
     if kills >= TARGET_KILLS:
         _end_round(true)
-    elif enemies.is_empty():
-        _wave_timer = WAVE_DELAY
-        _floating_text(player.global_position + Vector2(0, -82),
-            "WAVE CLEARED", Color("#c5f3b7"))
-        _spawn_wave_reward()
+    else:
+        _maybe_clear_wave()
+    _update_hud()
+
+func _maybe_clear_wave() -> void:
+    # Delayed explosions must resolve before another wave enters the room.
+    if _round_finished or not enemies.is_empty() or not pending_bombs.is_empty():
+        return
+    if _wave_timer > 0.0:
+        return
+    _wave_timer = WAVE_DELAY
+    _floating_text(player.global_position + Vector2(0, -82),
+        "WAVE CLEARED", Color("#c5f3b7"))
+    _spawn_wave_reward()
+
+func _on_explosion_requested(at: Vector2, radius: float, damage: int, bomb: Node2D) -> void:
+    if not pending_bombs.has(bomb):
+        return
+    if not _round_finished:
+        var flash = EXPLOSION_FLASH.new()
+        flash.position = at
+        flash.radius = radius
+        add_child(flash)
+        _floating_text(at + Vector2(0, -55), "BOOM! %d" % damage, Color("#ff934b"))
+        # A single random 1-10 HP value is rolled per explosion and applied
+        # to each living target within 128px; the dead owner is excluded.
+        if player.health > 0 and player.global_position.distance_to(at) <= radius:
+            player.take_damage(damage)
+        if not _round_finished:
+            for enemy in enemies.duplicate():
+                if _round_finished:
+                    break
+                if is_instance_valid(enemy) and enemy.health > 0 and enemy.global_position.distance_to(at) <= radius:
+                    var applied: int = enemy.take_damage(damage)
+                    if applied > 0:
+                        _floating_text(enemy.global_position + Vector2(0, -54),
+                            "-%d" % applied, Color("#ff934b"))
+    pending_bombs.erase(bomb)
+    _maybe_clear_wave()
     _update_hud()
 
 func _spawn_wave_reward() -> void:
@@ -208,12 +249,16 @@ func _on_player_fire(direction: Vector2) -> void:
     shot.damage = player.doughnut_damage
     shot.speed = player.doughnut_speed
     shot.size_multiplier = player.doughnut_size
+    shot.critical_chance = player.doughnut_critical_chance
     shot.position = player.position + direction * (26.0 + 12.0 * player.doughnut_size)
     add_child(shot)
     shot.damage_dealt.connect(_on_doughnut_damage)
 
-func _on_doughnut_damage(at: Vector2, amount: int) -> void:
-    _floating_text(at + Vector2(0, -50), "-%d" % amount, Color("#ffd56b"))
+func _on_doughnut_damage(at: Vector2, amount: int, critical: bool) -> void:
+    if critical:
+        _floating_text(at + Vector2(0, -50), "CRIT! -%d" % amount, Color("#ffed75"))
+    else:
+        _floating_text(at + Vector2(0, -50), "-%d" % amount, Color("#ffd56b"))
     _update_hud()
 
 func _on_player_damage_taken(amount: int) -> void:
@@ -264,6 +309,10 @@ func _end_round(victory: bool) -> void:
         if is_instance_valid(enemy):
             enemy.set_physics_process(false)
             enemy.set_process(false)
+    for bomb in pending_bombs:
+        if is_instance_valid(bomb):
+            bomb.queue_free()
+    pending_bombs.clear()
     for projectile in get_tree().get_nodes_in_group("projectiles"):
         projectile.queue_free()
     _update_hud()
@@ -277,9 +326,10 @@ func _floating_text(at: Vector2, message: String, color: Color) -> void:
 func _update_hud() -> void:
     if hud == null or not is_instance_valid(player):
         return
-    var stats: String = "OTTER %d/%d HP   |   KILLS %d/%d   |   WAVE %d   |   LEFT %d\nDOUGHNUT %d DMG   |   %d px/s   |   %.2fx SIZE" % [
+    var stats: String = "OTTER %d/%d HP   |   KILLS %d/%d   |   WAVE %d   |   LEFT %d\nDOUGHNUT %d DMG   |   %d px/s   |   %.2fx SIZE   |   CRIT 1%%   |   BOMBS %d" % [
         player.health, player.max_health, kills, TARGET_KILLS,
-        wave, enemies.size(), player.doughnut_damage, roundi(player.doughnut_speed), player.doughnut_size
+        wave, enemies.size(), player.doughnut_damage, roundi(player.doughnut_speed), player.doughnut_size,
+        pending_bombs.size()
     ]
     if _round_finished:
         hud.text = stats + ("\nVICTORY! 50 COLINS DEFEATED!" if _win else

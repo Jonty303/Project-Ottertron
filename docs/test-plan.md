@@ -1,14 +1,12 @@
 # Manual test plan — Godot 4.5.2
 
-1. Run with F5; HUD should read **0 / 50 kills**, **wave 1**, **5 enemies**, otter **12/12 HP**.
-2. Confirm five Colins spawn at safe distances and pursue the otter; all have small health bars and their own escalating life-drain auras.
-3. Defeat one Colin with two basic hits. Confirm kill count becomes **1**, four Colins remain and no new wave starts yet.
-4. Defeat the other four. Wave clear message appears, followed about a second later by five fresh Colins and wave number **2**.
-5. Repeat until 50 kills. Exactly ten five-enemy waves should have appeared. Victory stops gameplay and no additional wave spawns; R or joypad A restarts at zero kills.
-6. Let the otter lose all twelve HP before winning. Defeat stops gameplay and blocks new waves; restart works.
-7. Compare starting doughnuts to the prior version: visibly **smaller**, speed **315px/s** (previously 370), damage **1**.
-8. Collect each of the three pickups initially near the player: **red D** increases damage to 2; **cyan S** raises speed to 385px/s; **purple +** raises projectile size from 0.78× to 0.96×. Confirm a larger *collision hitbox*, not just artwork.
-9. Clear waves for another pickup of cycling type; additional upgrades stack, and existing in-flight projectiles retain their original stats.
-10. Verify floating hit numbers, aura tick damage, and channel break if >96px away.
+1. Start a game: 5 Colins, 0/50 kills, otter 12 HP, each Colin **10 HP**.
+2. Shoot Colin with 10 normal unpowered doughnuts. Check health bar, floating numbers and death count. With 1% probability, an individual doughnut instead deals double damage and shows bright `CRIT! -2` floating text; power-ups multiply that base damage before a critical doubles it.
+3. Repeatedly defeat Colins. On roughly **one in four deaths**, instead of disappearing, Colin should stop, become **red and visibly pulse for 2 seconds**, then produce a red/orange explosion wave reaching **128px**.
+4. Stand inside the explosion: a random **1–10 HP** is lost, reflected on the health bar and in floating text. Stand outside 128px: zero explosion damage.
+5. Have another Colin next to an exploding body: he should lose the **same randomly rolled HP amount**. If that kills him, he is counted toward the goal. There is a 25% chance he will become another bomb and detonate two seconds later.
+6. Clear the final living enemy while he is an armed corpse: the next wave should **wait until he explodes** and then start after a one-second breather.
+7. Kill 50 Colins or lose all player HP; no bombs or further waves should continue once the run ends.
+8. Confirm damage (red D), speed (cyan S) and size (purple +) pickups still stack and scale future doughnuts, while movement and aura mechanics are unchanged.
 
-**Automatic coverage:** GitHub Actions runs `tests/waves_smoke.gd` in headless Godot 4.5.2 as part of the validation workflow. Physical controller feel and sprite appearance still require manual playtesting.
+Automated regression: `tests/waves_smoke.gd` now covers forced 100%/0% crits, forced 100% explosion, collateral damage, chained bombs, non-colliding corpses, delayed-wave scheduling and 50-kill/defeat behaviour.

@@ -22,6 +22,12 @@ func _run() -> void:
     check(game.enemies.size() == 5, "Starts with five Colins")
     check(game.kills == 0, "Starts at zero kills")
     check(game.player.health == 12, "Otter starts at twelve health")
+    check(game.enemies[0].max_health == 10, "Colin begins with ten HP")
+    check(is_equal_approx(game.enemies[0].explosion_chance, 0.25), "Explosion chance defaults to 25%")
+    check(game.enemies[0].explosion_damage_min == 1 and game.enemies[0].explosion_damage_max == 10,
+        "Explosion damage ranges from one to ten")
+    check(is_equal_approx(game.player.doughnut_critical_chance, 0.01),
+        "Doughnut critical hit chance defaults to 1%")
     check(game.player.doughnut_speed == 315.0, "Shots start slower")
     check(is_equal_approx(game.player.doughnut_size, 0.78), "Shots start smaller")
 
@@ -32,7 +38,8 @@ func _run() -> void:
         "All three pickups available in starting room")
 
     var first_enemy = game.enemies[0]
-    first_enemy.take_damage(2)
+    first_enemy.explosion_chance = 0.0
+    first_enemy.take_damage(10)
     check(game.kills == 1, "One Colin death counts as one kill")
     check(game.enemies.size() == 4, "Enemy tracking removes the fallen Colin")
     check(game._wave_timer < 0.0, "Wave doesn't advance with enemies still alive")
@@ -65,6 +72,7 @@ func _run() -> void:
         check(enemies_this_wave.size() == desired_count,
             "Wave %d contains the expected remaining Colins" % expected_wave)
         for enemy in enemies_this_wave:
+            enemy.explosion_chance = 0.0
             enemy.take_damage(enemy.max_health)
         check(game.enemies.is_empty(), "All enemies cleared from wave %d" % expected_wave)
         check(game.kills == expected_wave * 5, "Cumulative kills after wave %d" % expected_wave)
@@ -91,12 +99,116 @@ func _run() -> void:
         "Controls stop on defeat")
     var dead_game_kills: int = defeat_game.kills
     for enemy in defeat_game.enemies.duplicate():
+        enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)
     check(defeat_game.kills == dead_game_kills, "Kills do not count after defeat")
     check(defeat_game._wave_timer < 0.0, "No new wave schedules after death")
     defeat_game.queue_free()
     await process_frame
 
+
+    # Deterministic critical hit tests: force 100% and 0% rates on real projectiles.
+    var combat_game = GAME.instantiate()
+    root.add_child(combat_game)
+    await process_frame
+    var dummy = combat_game.enemies[0]
+    dummy.explosion_chance = 0.0
+    dummy.set_physics_process(false)
+    var critical_shot = DOUGHNUT.instantiate()
+    critical_shot.damage = 3
+    critical_shot.critical_chance = 1.0
+    combat_game.add_child(critical_shot)
+    var critical_result: Dictionary = {}
+    critical_shot.damage_dealt.connect(func(_at: Vector2, amount: int, critical: bool) -> void:
+        critical_result["damage"] = amount
+        critical_result["critical"] = critical
+    )
+    critical_shot._on_body_entered(dummy)
+    check(dummy.health == 4, "Guaranteed crit deals twice 3 damage")
+    check(critical_result.get("critical", false), "Critical hit is flagged for floating text")
+    check(critical_result.get("damage", 0) == 6, "Critical hit reports the applied damage")
+
+    var normal_shot = DOUGHNUT.instantiate()
+    normal_shot.damage = 2
+    normal_shot.critical_chance = 0.0
+    combat_game.add_child(normal_shot)
+    var normal_result: Dictionary = {}
+    normal_shot.damage_dealt.connect(func(_at: Vector2, amount: int, critical: bool) -> void:
+        normal_result["damage"] = amount
+        normal_result["critical"] = critical
+    )
+    normal_shot._on_body_entered(dummy)
+    check(dummy.health == 2, "Zero-percent crit deals normal damage")
+    check(not normal_result.get("critical", true), "Ordinary shot is not marked critical")
+    check(normal_result.get("damage", 0) == 2, "Normal hit reports applied damage")
+
+    # Force a delayed explosion and a chain reaction, without depending on random chance.
+    var bomb = combat_game.enemies[1]
+    var nearby = combat_game.enemies[2]
+    var chain = combat_game.enemies[3]
+    bomb.position = Vector2(80, 0)
+    nearby.position = Vector2(90, 0)
+    chain.position = Vector2(110, 20)
+    dummy.position = Vector2(-300, -300)
+    combat_game.enemies[4].position = Vector2(320, 320)
+    for colin in combat_game.enemies:
+        colin.set_physics_process(false)
+        colin.explosion_chance = 0.0
+    bomb.explosion_chance = 1.0
+    bomb.explosion_delay = 2.0
+    bomb.explosion_damage_min = 4
+    bomb.explosion_damage_max = 4
+    chain.explosion_chance = 1.0
+    chain.explosion_damage_min = 4
+    chain.explosion_damage_max = 4
+    chain.health = 4
+    chain.health_bar.set_health(4, chain.max_health)
+    var initial_player_hp: int = combat_game.player.health
+    bomb.take_damage(10)
+    check(combat_game.kills == 1, "The explosive Colin counts as killed immediately")
+    check(combat_game.pending_bombs.size() == 1, "Dead bomb waits to explode")
+    check(not bomb.is_in_group("enemies"), "A dead bomb cannot be damaged again")
+    check(bomb.collision_layer == 0, "Dead bombs have no collision")
+    check(combat_game.player.health == initial_player_hp, "No premature blast damage")
+    bomb._process(1.9)
+    check(combat_game.player.health == initial_player_hp, "Blast not triggered before two seconds")
+    bomb._process(0.11)
+    check(combat_game.player.health == initial_player_hp - 4, "Blast damages otter inside 128px")
+    check(nearby.health == 6, "Blast damages a nearby living Colin")
+    check(combat_game.kills == 2, "Blast kill of another Colin counts toward goal")
+    check(combat_game.pending_bombs.size() == 1, "Blast kill can start another bomb")
+    chain._process(2.01)
+    check(combat_game.player.health == initial_player_hp - 8, "Chain blast damages otter once more")
+    check(nearby.health == 2, "Chain blast damages other living Colins")
+    check(combat_game.pending_bombs.is_empty(), "All explosions eventually resolve")
+    check(dummy.health == 2, "Enemies outside the radius are unharmed")
+    combat_game.queue_free()
+    await process_frame
+
+    # Clearing the final enemy while it is still a bomb must NOT start the next wave.
+    var delayed_game = GAME.instantiate()
+    root.add_child(delayed_game)
+    await process_frame
+    var last_bomb = delayed_game.enemies.back()
+    for enemy in delayed_game.enemies.duplicate():
+        if enemy == last_bomb:
+            continue
+        enemy.explosion_chance = 0.0
+        enemy.take_damage(enemy.max_health)
+    last_bomb.explosion_chance = 1.0
+    last_bomb.explosion_damage_min = 1
+    last_bomb.explosion_damage_max = 1
+    last_bomb.position = Vector2(340, 340)
+    last_bomb.take_damage(last_bomb.max_health)
+    check(delayed_game.enemies.is_empty(), "Wave's final Colin is defeated")
+    check(delayed_game.pending_bombs.size() == 1, "Last defeated Colin is still a bomb")
+    check(delayed_game._wave_timer < 0.0, "No next wave while a bomb remains")
+    last_bomb._process(2.01)
+    check(delayed_game.pending_bombs.is_empty(), "Last delayed explosion resolves")
+    check(delayed_game._wave_timer > 0.0, "Next wave schedules after the final blast")
+    delayed_game.queue_free()
+    await process_frame
+
     if failures == 0:
-        print("OTTERTRON TEST PASSED: 10 waves / 50 kills, defeat, all three upgrades, scaled hitbox")
+        print("OTTERTRON TEST PASSED: 50 kills, defeat, upgrades, 1% critical setup, delayed blasts and chain reactions")
     quit(0 if failures == 0 else 1)

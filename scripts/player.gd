@@ -14,6 +14,7 @@ const FIRE_INTERVAL: float = 0.20
 
 @export var max_health: int = 12
 @export var doughnut_damage: int = 1
+@export_range(0.0, 1.0, 0.001) var doughnut_critical_chance: float = 0.01
 @export var doughnut_speed: float = 315.0
 @export var doughnut_size: float = 0.78
 @export var maximum_doughnut_size: float = 2.0
