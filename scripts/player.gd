@@ -1,36 +1,40 @@
 extends CharacterBody2D
-## Independent analogue movement and directional automatic firing.
+## Controller movement, directional auto-fire and upgradable doughnut stats.
 
 signal fire_requested(direction: Vector2)
 signal health_changed(current_health: int)
+signal damage_taken(amount: int)
+signal doughnut_stats_changed(damage: int, speed: float)
 signal defeated
 
 const MOVE_SPEED: float = 210.0
 const AIM_DEADZONE: float = 0.45
 const MOVE_DEADZONE: float = 0.18
 const FIRE_INTERVAL: float = 0.20
-const INVULNERABLE_TIME: float = 0.85
 
-var max_health: int = 3
-var health: int = 3
+@export var max_health: int = 12
+@export var doughnut_damage: int = 1
+@export var doughnut_speed: float = 370.0
+
+var health: int = 12
 var _fire_cooldown: float = 0.0
-var _invulnerability: float = 0.0
 
 @onready var art = $Art
+@onready var health_bar = $HealthBar
+
+func _ready() -> void:
+    health = max_health
+    health_bar.set_health(health, max_health)
 
 func _physics_process(delta: float) -> void:
     if health <= 0:
         velocity = Vector2.ZERO
         return
-
     _fire_cooldown = maxf(0.0, _fire_cooldown - delta)
-    _invulnerability = maxf(0.0, _invulnerability - delta)
 
     var movement: Vector2 = _stick(JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y)
     if movement.length() < MOVE_DEADZONE:
         movement = Vector2.ZERO
-
-    # Keyboard testing fallback; controller movement takes precedence.
     if movement == Vector2.ZERO:
         movement = Vector2(
             float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
@@ -67,11 +71,19 @@ func _stick(horizontal_axis: JoyAxis, vertical_axis: JoyAxis) -> Vector2:
         Input.get_joy_axis(device, vertical_axis)
     ).limit_length(1.0)
 
-func take_damage(amount: int) -> void:
-    if health <= 0 or _invulnerability > 0.0:
-        return
-    health = maxi(health - amount, 0)
-    _invulnerability = INVULNERABLE_TIME
+func take_damage(amount: int) -> int:
+    if health <= 0 or amount <= 0:
+        return 0
+    var applied: int = mini(amount, health)
+    health -= applied
+    health_bar.set_health(health, max_health)
+    damage_taken.emit(applied)
     health_changed.emit(health)
-    if health == 0:
+    if health <= 0:
         defeated.emit()
+    return applied
+
+func apply_doughnut_upgrade(extra_damage: int, extra_speed: float) -> void:
+    doughnut_damage = maxi(1, doughnut_damage + extra_damage)
+    doughnut_speed = maxf(1.0, doughnut_speed + extra_speed)
+    doughnut_stats_changed.emit(doughnut_damage, doughnut_speed)

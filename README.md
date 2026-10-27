@@ -1,38 +1,43 @@
 # Project Ottertron
 
-A small top-down twin-stick shoot-'em-up built with **Godot 4.x**.
+A cute top-down twin-stick shoot-'em-up in **Godot 4.5.2-stable**. Play as a cuddly otter who fires glazed doughnuts at Colin, a slow, bald, rotund office worker in glasses and a yellow cardigan.
 
-Play as a cuddly otter who fires glazed doughnuts at **Colin**, a bald, rotund office worker with glasses and a yellow cardigan.
+## Run
 
-## Run it
+1. Install [Godot 4.5.2-stable](https://godotengine.org/download/archive/4.5.2-stable/) (standard version).
+2. Clone or download this private repository.
+3. Open `project.godot` in Godot's Project Manager.
+4. Press **F5** to play.
 
-1. Install the standard Godot 4.x editor.
-2. Clone or download this repository.
-3. Import `project.godot` in Godot Project Manager.
-4. Press **F5**.
-
-The first playable prototype includes a square room with collision walls, analogue movement, directional doughnut shooting, chasing Colin, HP and restart.
-
-| Input | Gamepad | Keyboard for development |
+| Action | Controller | Keyboard test |
 | --- | --- | --- |
 | Move | Left stick | WASD |
-| Aim and fire continuously | Right stick | Arrow keys |
-| Restart after victory/defeat | A / Cross (south face button) | R |
+| Aim and shoot continuously | Right stick | Arrow keys |
+| Restart after the round | A / Cross | R |
 
-Deflect the right stick to aim **and shoot**. Release it to stop shooting. Left and right sticks work independently.
+## Current playable mechanics
 
-## Project layout
+- Square room with blocking walls, camera follow and **static placeholder art**.
+- **Otter:** 12 HP; overhead health bar and HUD.
+- **Colin:** 2 HP; small overhead health bar; slowly approaches the otter.
+- **Doughnuts:** 1 starting damage and 370px/second starting speed; automatically fire while the aim stick is pushed. A glowing pickup in the room increases damage to 2 and speed to 450px/second.
+- **Colin's life drain:** Begins within **53px** and stops Colin moving while channelled. The wobbly purple aura ticks every **1 second** at damage 1, then ramps by 1 after each 3 completed ticks (max 4/tick). At more than **96px** separation, the channel breaks and its damage ramp resets. Colin can then approach again.
+- **Floating combat text:** Doughnut hits, incoming life-drain damage, aura starting/breaking and pickup messages float upward.
 
-- `project.godot` — Godot project configuration
-- `scenes/` — reusable player, Colin, doughnut and entry scenes
-- `scripts/` — movement, combat, art placeholders and room logic
-- `docs/game-design.md` — agreed v0.1 mechanics and art direction
-- `docs/roadmap.md` — progression toward the approved sprite artwork
+Balancing knobs are exported on the player, Colin, doughnut and power-up scenes. The pickup demonstrates a power-up now; additional pickup types can follow.
 
-## Art status
+## Source structure
 
-The prototype draws simple static characters directly in Godot so it runs without any imported image files. The approved otter/Colin 64×64 pixel-art character sheet from the design conversation is the **visual target**; the current procedural placeholders are **not** the final assets. There is no animation in v0.1.
+- `project.godot` and `ENGINE_VERSION`: pinned target engine version (Godot configuration stores the 4.5 feature compatibility tag).
+- `scenes/`: player, Colin, doughnut, pickup and game scene.
+- `scripts/`: actors, projectile behaviour, aura, combat text, health bars and room.
+- `docs/game-design.md`: gameplay and art specifications.
+- `docs/roadmap.md`: next steps.
 
-## Scope and compatibility
+## Artwork
 
-Designed for Godot 4.x. This initial source drop has not been run in the Godot editor by the assistant; please use the editor to import and test on your controller.
+The current in-engine characters are procedural placeholders. The approved **64×64** pixel-art otter and Colin character reference remains the target, including the corrected otter UP-RIGHT directional view as the mirror of UP-LEFT. The reference concept image has not been imported as separate transparent 64×64 assets, and there is no animation in this prototype.
+
+## Validation
+
+Changes are checked into GitHub, but a full Godot 4.5.2 editor/controller regression test still needs to be run locally. Please report any parser errors or gameplay oddities from F5 so they can be corrected.

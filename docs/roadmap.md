@@ -1,26 +1,23 @@
 # Roadmap
 
-## v0.1 — first playable (repository starter)
+## v0.2 — health, attacks and power-ups
 
-- [x] Godot 4 project and entry scene
-- [x] Square arena and wall collision
-- [x] Left-stick player movement
-- [x] Right-stick directional auto-fire
-- [x] Single chasing Colin, hits and defeat
-- [x] Health, restart, keyboard testing fallback
-- [ ] Test in Godot editor and with real controller
-- [ ] Replace procedural placeholders with transparent 64×64 approved directional sprite textures
+- [x] Target Godot 4.5.2-stable
+- [x] Player 12 HP and overhead health bar
+- [x] Colin 2 HP and overhead health bar
+- [x] Doughnut damage and speed properties
+- [x] Demonstration damage+speed power-up
+- [x] Colin slow pursuit and wobbly drain aura
+- [x] Increasing damage per drain tick and adjustable tick interval
+- [x] Drain breaks beyond 96px; ramps reset
+- [x] Floating hit, drain and pickup text
+- [ ] Run in Godot 4.5.2 and test gamepad feel
+- [ ] Replace placeholder art with individual transparent 64×64 sprites
 
-## v0.2 — visuals and feel
+## v0.3 — feel and balancing
 
-- [ ] Export production-ready otter and Colin sprite sheets
-- [ ] Directional sprite selection without animation
-- [ ] Doughnut hit feedback and audio
-- [ ] Tune movement and firing rates
-- [ ] Fix camera bounds and HUD scaling
-
-## Later
-
-- [ ] Multiple square room sizes and room transitions
-- [ ] Additional enemy types
-- [ ] Pickups, hazards and simple scoring
+- [ ] Tune aura break distance, ramp timing and visual feedback
+- [ ] Hit flash and audio for player and enemies
+- [ ] Add distinct pickup types and configurable level drops
+- [ ] Multiple Colins and multiple square room sizes
+- [ ] Tune HUD and camera limits
