@@ -42,3 +42,10 @@ jobs:
           set -o pipefail
           ./godot --headless --path . --script res://tests/waves_smoke.gd 2>&1 | tee godot-tests.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|OTTERTRON TEST FAILED' godot-tests.log; then exit 1; fi
+
+      - name: Enemy types and friendly-fire pencil tests
+        shell: bash
+        run: |
+          set -o pipefail
+          ./godot --headless --path . --script res://tests/variants_smoke.gd 2>&1 | tee godot-variants.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|OTTERTRON VARIANT TEST FAILED' godot-variants.log; then exit 1; fi

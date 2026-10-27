@@ -26,6 +26,7 @@ var _fire_cooldown: float = 0.0
 @onready var health_bar = $HealthBar
 
 func _ready() -> void:
+    add_to_group("player")
     health = max_health
     health_bar.set_health(health, max_health)
 

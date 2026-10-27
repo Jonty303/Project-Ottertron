@@ -1,19 +1,19 @@
 # Roadmap
 
-## v0.4 — critical damage and explosive Colin deaths
+## v0.5 — Colin enemy archetypes and boss
 
-- [x] Colin health raised to 10 HP
-- [x] 1% critical chance on doughnuts; critical hits deal 2× and show special text
-- [x] 25% chance that defeated Colin remains as a flashing red explosive corpse
-- [x] Two-second warning, visible 128px explosion, 1–10 random damage
-- [x] Explosion affects otter and other living Colins, with potential chain reactions
-- [x] Waves wait for detonations before spawning the next five Colins
-- [x] Headless tests for forced criticals, non-criticals, delayed blasts and chain reactions
-- [ ] Controller playtest to tune the 10 HP enemies and explosion difficulty
-- [ ] Replace temporary character art with approved pixel sprites
+- [x] Yellow Colin never explodes
+- [x] Red-jumper Colin always explodes 2 seconds after death
+- [x] Blue-jumper Colin stands off and fires snapping, friendly-fire pencils
+- [x] Three normal + one red + one blue for waves 1–9
+- [x] Round 10: 2.2× boss with 40 HP, slow movement, life drain and pencils; four random minions
+- [x] Preserve 50-kill victory and delayed explosions between waves
+- [x] Headless enemy-variant tests added
+- [ ] Confirm on-screen sprite readability and balance with a real controller
+- [ ] Replace procedural art with approved proper 64×64 coloured character sprites
 
 ## Next
 
-- [ ] Add sounds and stronger visual hit feedback
-- [ ] Adjust drop rates and wave balance
-- [ ] More room types and enemy classes
+- [ ] Boss health/attack tuning, unique tells and extra effects
+- [ ] Sound for pencils snapping, aura and explosions
+- [ ] More square room layouts and map progression

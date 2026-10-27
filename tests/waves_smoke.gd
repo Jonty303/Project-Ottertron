@@ -23,7 +23,14 @@ func _run() -> void:
     check(game.kills == 0, "Starts at zero kills")
     check(game.player.health == 12, "Otter starts at twelve health")
     check(game.enemies[0].max_health == 10, "Colin begins with ten HP")
-    check(is_equal_approx(game.enemies[0].explosion_chance, 0.25), "Explosion chance defaults to 25%")
+    var red_count: int = 0
+    for enemy in game.enemies:
+        if enemy.variant == "explosive":
+            red_count += 1
+            check(is_equal_approx(enemy.explosion_chance, 1.0), "Red Colin always explodes")
+        else:
+            check(is_equal_approx(enemy.explosion_chance, 0.0), "Yellow and blue Colins never explode")
+    check(red_count == 1, "Exactly one red Colin in each regular wave")
     check(game.enemies[0].explosion_damage_min == 1 and game.enemies[0].explosion_damage_max == 10,
         "Explosion damage ranges from one to ten")
     check(is_equal_approx(game.player.doughnut_critical_chance, 0.01),
@@ -67,6 +74,15 @@ func _run() -> void:
 
     for expected_wave in range(1, 11):
         check(game.wave == expected_wave, "Expected wave %d" % expected_wave)
+        var bosses: Array = game.enemies.filter(func(enemy: Node2D) -> bool: return enemy.variant == "boss")
+        if expected_wave == 10:
+            check(bosses.size() == 1, "Final wave has exactly one boss Colin")
+            if bosses.size() == 1:
+                check(bosses[0].max_health == 40, "Boss has four times the normal health")
+                check(bosses[0].get_node("Art").scale.x >= 2.0, "Boss is at least twice as large")
+                check(bosses[0]._uses_aura and bosses[0]._shoots_pencils, "Boss uses both attack types")
+        else:
+            check(bosses.is_empty(), "Only wave 10 has a boss")
         var enemies_this_wave = game.enemies.duplicate()
         var desired_count: int = 4 if expected_wave == 1 else 5
         check(enemies_this_wave.size() == desired_count,

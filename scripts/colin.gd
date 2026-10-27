@@ -6,7 +6,9 @@ signal aura_started
 signal aura_broken
 signal aura_tick(damage: int)
 signal explosion_requested(at: Vector2, radius: float, damage: int)
+signal pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D)
 
+@export_enum("normal", "explosive", "ranged", "boss") var variant: String = "normal"
 @export var max_health: int = 10
 @export var move_speed: float = 68.0
 @export var drain_start_range: float = 53.0
@@ -16,7 +18,11 @@ signal explosion_requested(at: Vector2, radius: float, damage: int)
 @export var drain_ramp_every_ticks: int = 3
 @export var drain_max_damage: int = 4
 
-@export_range(0.0, 1.0, 0.01) var explosion_chance: float = 0.25
+@export_range(0.0, 1.0, 0.01) var explosion_chance: float = 0.0
+@export var pencil_interval: float = 1.0
+@export var pencil_range: float = 680.0
+@export var ranged_preferred_distance: float = 270.0
+@export var ranged_minimum_distance: float = 190.0
 @export var explosion_delay: float = 2.0
 @export var explosion_radius: float = 128.0
 @export var explosion_damage_min: int = 1
@@ -31,14 +37,58 @@ var _drain_elapsed: float = 0.0
 var _ticks_completed: int = 0
 var _aura_phase: float = 0.0
 var _glow_time: float = 0.0
+var _pencil_elapsed: float = 0.0
+var _shoots_pencils: bool = false
+var _uses_aura: bool = true
+var _boss_size: float = 2.2
 
 @onready var art = $Art
 @onready var health_bar = $HealthBar
 
 func _ready() -> void:
+    _configure_variant()
     health = max_health
     health_bar.set_health(health, max_health)
     add_to_group("enemies")
+
+func _configure_variant() -> void:
+    # All variants share death tracking and damage, but each has a distinct role.
+    # Using colours rather than new sprites keeps the current placeholder artwork.
+    match variant:
+        "explosive":
+            explosion_chance = 1.0
+            art.jumper_color = Color("#c3343c")
+            move_speed = 62.0
+        "ranged":
+            explosion_chance = 0.0
+            _uses_aura = false
+            _shoots_pencils = true
+            pencil_interval = 1.0
+            move_speed = 58.0
+            art.jumper_color = Color("#377dc8")
+        "boss":
+            explosion_chance = 0.0
+            max_health = 40
+            move_speed = 33.0
+            _shoots_pencils = true
+            _uses_aura = true
+            pencil_interval = 1.1
+            pencil_range = 730.0
+            drain_start_range = 88.0
+            drain_break_range = 145.0
+            art.jumper_color = Color("#8b568f")
+            art.scale = Vector2.ONE * _boss_size
+            health_bar.position.y = -95.0
+            health_bar.width = 78.0
+            var collision := CircleShape2D.new()
+            collision.radius = 42.0
+            $CollisionShape2D.shape = collision
+        _:
+            variant = "normal"
+            explosion_chance = 0.0
+            art.jumper_color = Color("#e4ae37")
+    if _shoots_pencils:
+        _pencil_elapsed = 0.0
 
 func _process(delta: float) -> void:
     if pending_explosion:
@@ -65,6 +115,14 @@ func _physics_process(delta: float) -> void:
         return
     var separation: Vector2 = target.global_position - global_position
     var distance: float = separation.length()
+    if _shoots_pencils and distance <= pencil_range and distance > 0.01:
+        _pencil_elapsed += delta
+        if _pencil_elapsed >= maxf(0.1, pencil_interval):
+            _pencil_elapsed -= maxf(0.1, pencil_interval)
+            var muzzle_offset: float = 72.0 if variant == "boss" else 38.0
+            pencil_requested.emit(global_position + separation.normalized() * muzzle_offset,
+                separation.normalized(), self)
+            art.set_facing(separation)
 
     if aura_active:
         if distance > drain_break_range:
@@ -86,10 +144,21 @@ func _physics_process(delta: float) -> void:
                     _stop_aura()
             return
 
-    if distance <= drain_start_range:
+    if _uses_aura and distance <= drain_start_range:
         _start_aura()
         velocity = Vector2.ZERO
-    elif distance > 40.0:
+    elif variant == "ranged":
+        # Ranged Colin tries to maintain space rather than running into melee.
+        var desired_motion := Vector2.ZERO
+        if distance < ranged_minimum_distance:
+            desired_motion = -separation.normalized()
+        elif distance > ranged_preferred_distance:
+            desired_motion = separation.normalized()
+        velocity = desired_motion * move_speed
+        if velocity != Vector2.ZERO:
+            move_and_slide()
+        art.set_facing(separation)
+    elif distance > (70.0 if variant == "boss" else 40.0):
         velocity = separation.normalized() * move_speed
         art.set_facing(separation)
         move_and_slide()

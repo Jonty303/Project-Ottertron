@@ -1,34 +1,33 @@
-# Project Ottertron — game design v0.4
+# Project Ottertron — game design v0.5
 
-Engine: **Godot 4.5.2-stable**. A top-down shoot-'em-up in square arenas. Art goal: static 64×64 directional pixel sprites.
+**Target engine:** Godot 4.5.2-stable. Top-down twin-stick shoot-'em-up in square rooms with static placeholder art until production 64×64 directional sprites are prepared.
 
-## Run structure
+## Player and doughnuts
 
-- Otter begins with **12 HP** and an overhead health bar. At zero HP, the game ends in defeat.
-- **Five Colins** spawn per wave. Clear each wave to earn a power-up and start another wave after a one-second pause.
-- Win at **50 enemy kills** (ten waves of five). Explosive corpses still waiting to detonate do **not** allow another wave to spawn.
-- HUD tracks player health, wave, remaining living Colins, kills, donut upgrades and active bomb count.
-- Enemies spawn away from the otter and pursue it slowly (~68px/s).
+- Otter: **12 HP**, independent left-stick movement and right-stick automatic aiming/firing; HP bar and floating damage text.
+- Doughnut: **1 starting damage, 315px/s, 0.78× size**. Random **1% critical chance per hit**, dealing **double damage**. Crits show `CRIT!`.
+- Collect separate power-ups for damage (+1), speed (+70px/s), size (+0.18×), with an upgradable projectile collision radius.
 
-## Doughnuts and criticals
+## Enemy roster
 
-- Right stick direction fires; left stick moves independently. Starting damage **1**, speed **315px/s**, size **0.78x**.
-- Each doughnut hit independently has a **1% chance of being critical**, for **2x damage**. Critical hits show `CRIT! -N` floating text. Applied numbers reflect actual HP lost, including any overkill cap.
-- Critical chance is an exported player/projectile balance parameter and starts at 0.01. Critical strikes currently apply **only to doughnuts**; life-drain ticks and explosions are not critical.
-- Red `D` pick-ups add 1 damage, cyan `S` add 70px/s and purple `+` increase size by 0.18x, scaling artwork and collision hitbox; size capped at 2.0x. Effects stack.
+All Colins use the bald/round/glasses base visual; the jumper colour and behavior distinguish the archetypes:
 
-## Colin's combat and exploding death
+- **Normal Colin (mustard yellow):** **10 HP**, slowly chases and performs close-range life drain. Explosion chance is exactly **0%**.
+- **Explosive Colin (red):** **10 HP**, same approach/life-drain behavior. Explosion chance is exactly **100%**. On death he stops, becomes non-colliding and pulses red for **2.0 seconds**, then detonates in a **128px** radius for **1–10 integer damage**. One value is rolled for the blast, affecting the otter and **all living Colins except the deceased shooter/owner** inside the blast. Red victims can trigger further red explosions on their own timers.
+- **Pencil Colin (blue):** **10 HP**, does not life-drain or explode. Holds position at range (typically **190–270px**), backs away when approached and fires one pencil about **every 1.0 second** at the otter. Projectiles travel ~390px/s, dealing **1–10 random integer damage** per impact. Pencil hits can hurt **other Colins**, but not their source. They **snap** on any impact with a wall, otter or enemy; show small broken-pencil effect and floating damage.
+- **Boss Colin (purple):** **40 HP** (4× regular Colin), visual **2.2× size** with larger collision and HP bar; slower at **33px/s**. Chases, life-drains at a larger 88px start / 145px break distance and fires a pencil approximately every **1.1 seconds**. No death explosion by default.
 
-- **10 starting HP** with small overhead health bar. He is a bald, rotund yellow-cardigan office worker; placeholder art in-engine.
-- At 53px, starts a wobbly purple aura that drains the otter's HP every second. Damage ramps from 1 to 4 per tick over a continuous channel. Beyond 96px, aura breaks and resets to initial damage.
-- **25% chance on death:** Colin does **not** vanish. He stops moving, cannot be attacked again, **glows and pulses red for 2 seconds**, then explodes in a visible expanding **128px-radius** blast.
-- Each explosion rolls **one uniformly random integer damage value from 1 to 10**. That number hits the otter and **every other living Colin** whose centre is at most 128px from the detonation; the dead Colin is excluded.
-- Explosions can kill other Colins, contributing to the 50-kill target, and these other Colins independently roll their own 25% explosion chance, allowing **chain reactions**.
-- Every hit has floating combat text. Explosions additionally display a `BOOM!` indicator. The corpse is non-colliding, immune to further damage and tracked until detonation.
-- If the otter dies or reaches 50 kills, the run ends immediately and no pending detonations or additional waves continue.
+Life drain retains its escalating once-a-second tick: starts at 1, increases after 3 ticks, caps at 4, and resets after escaping the break radius. The normal and red Colin aura range is 53px start / 96px break.
 
-## Technical direction
+## Waves
 
-- Configurable per-enemy explosion chance, delay, radius, damage bounds; critical chance configurable on player/projectile.
-- Wave progression waits for all living enemies and armed corpses to be resolved.
-- Replace procedural artwork later with approved sprites (otter UP-RIGHT exact mirror of UP-LEFT).
+- Waves 1 through 9 consist of **five Colins**: 3 yellow / 1 red / 1 blue, shuffled into new positions. This gives a steady 20% exposure to each new type.
+- Wave 10 is **1 boss Colin + 4 random minions**, with independent 55% normal / 25% red / 20% blue rolls.
+- All kills count equally toward the **50-kill victory**, including ranged kills from friendly-fire and bomb collateral. With the five-per-wave structure, the boss wave takes the total from 45 to 50.
+- The next wave waits for every living enemy to die **and** for any red corpses to explode; then waits 1 second. Game over at zero otter HP; victory at 50 kills. Both outcomes prevent more projectiles, bombs or waves.
+
+## Visual readability
+
+- Overhead bars for all Colins; larger boss bar.
+- Coloured jumper variants; red corpse warning and orange explosion, pencil fragments and `SNAP!`, blue floating friendly-fire damage, red otter damage, doughnut `CRIT!`.
+- Future work: dedicated coloured directional pixel sprites for each variant; improve projectile/impact art and difficulty balance.

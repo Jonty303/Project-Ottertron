@@ -2,6 +2,7 @@ extends Node2D
 ## Deliberately simple static 64x64 placeholders. Replace with approved sprites later.
 
 @export_enum("otter", "colin", "doughnut") var kind: String = "otter"
+@export var jumper_color: Color = Color("#e4ae37")
 var facing: Vector2 = Vector2.DOWN
 
 func set_facing(direction: Vector2) -> void:
@@ -61,8 +62,8 @@ func _draw_otter() -> void:
         draw_line(Vector2(x, 6), Vector2(x + float(side) * 12.0, 8), cream, 1.4)
 
 func _draw_colin() -> void:
-    var cardigan := Color("#e4ae37")
-    var cardigan_dark := Color("#ac751f")
+    var cardigan: Color = jumper_color
+    var cardigan_dark: Color = jumper_color.darkened(0.27)
     var skin := Color("#fac9ad")
     var outline := Color("#59382d")
     var trousers := Color("#57453d")

@@ -4,6 +4,8 @@ extends Node2D
 const PLAYER_SCENE: PackedScene = preload("res://scenes/player.tscn")
 const COLIN_SCENE: PackedScene = preload("res://scenes/colin.tscn")
 const DOUGHNUT_SCENE: PackedScene = preload("res://scenes/doughnut.tscn")
+const PENCIL_SCENE: PackedScene = preload("res://scenes/pencil.tscn")
+const PENCIL_SNAP = preload("res://scripts/pencil_snap.gd")
 const POWER_UP_SCENE: PackedScene = preload("res://scenes/power_up.tscn")
 const FLOATING_TEXT = preload("res://scripts/floating_text.gd")
 const EXPLOSION_FLASH = preload("res://scripts/explosion_flash.gd")
@@ -113,21 +115,45 @@ func _spawn_wave() -> void:
         return
     wave += 1
     var requested: int = INITIAL_WAVE_SIZE if wave == 1 else FOLLOWUP_WAVE_SIZE
+    var roster: Array[String] = _build_wave_roster()
     var count: int = mini(requested, TARGET_KILLS - kills)
     for i in range(count):
         var enemy = COLIN_SCENE.instantiate()
+        enemy.variant = roster[i]
         enemy.position = _find_enemy_spawn()
         enemy.target = player
         add_child(enemy)
         enemies.append(enemy)
         enemy.defeated.connect(_on_enemy_defeated.bind(enemy))
         enemy.explosion_requested.connect(_on_explosion_requested.bind(enemy))
+        enemy.pencil_requested.connect(_on_pencil_requested)
         enemy.aura_started.connect(_on_aura_started.bind(enemy))
         enemy.aura_broken.connect(_on_aura_broken.bind(enemy))
         enemy.aura_tick.connect(_on_aura_tick.bind(enemy))
     _floating_text(player.global_position + Vector2(0, -78),
         "WAVE %d" % wave, Color("#fff0ac"))
     _update_hud()
+
+func _build_wave_roster() -> Array[String]:
+    # Waves 1-9 are deliberately predictable in difficulty: 60% yellow,
+    # 20% red explosives, 20% blue pencil throwers.
+    var roster: Array[String] = []
+    if wave == 10:
+        roster.append("boss")
+        for i in range(4):
+            roster.append(_roll_minion_type())
+    else:
+        roster.assign(["normal", "normal", "normal", "explosive", "ranged"])
+    roster.shuffle()
+    return roster
+
+func _roll_minion_type() -> String:
+    var roll: float = _rng.randf()
+    if roll < 0.55:
+        return "normal"
+    if roll < 0.80:
+        return "explosive"
+    return "ranged"
 
 func _find_enemy_spawn() -> Vector2:
     var inner_limit: float = ROOM_SIDE * 0.5 - WALL_THICKNESS - 46.0
@@ -253,6 +279,32 @@ func _on_player_fire(direction: Vector2) -> void:
     shot.position = player.position + direction * (26.0 + 12.0 * player.doughnut_size)
     add_child(shot)
     shot.damage_dealt.connect(_on_doughnut_damage)
+
+func _on_pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D) -> void:
+    if _round_finished:
+        return
+    var pencil = PENCIL_SCENE.instantiate()
+    pencil.direction = direction
+    pencil.shooter = shooter
+    pencil.global_position = at
+    add_child(pencil)
+    pencil.damage_dealt.connect(_on_pencil_damage_dealt)
+    pencil.snapped.connect(_on_pencil_snapped.bind(direction.angle()))
+
+func _on_pencil_damage_dealt(at: Vector2, amount: int, victim_is_player: bool) -> void:
+    # Player damage already produces red floating text via the damage_taken signal.
+    if not victim_is_player:
+        _floating_text(at + Vector2(0, -51), "-%d" % amount, Color("#86c7ff"))
+    _update_hud()
+
+func _on_pencil_snapped(at: Vector2, heading: float) -> void:
+    if _round_finished:
+        return
+    var bits = PENCIL_SNAP.new()
+    bits.position = at
+    bits.heading = heading
+    add_child(bits)
+    _floating_text(at + Vector2(0, -26), "SNAP!", Color("#ffe29b"))
 
 func _on_doughnut_damage(at: Vector2, amount: int, critical: bool) -> void:
     if critical:

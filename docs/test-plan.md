@@ -1,12 +1,12 @@
 # Manual test plan — Godot 4.5.2
 
-1. Start a game: 5 Colins, 0/50 kills, otter 12 HP, each Colin **10 HP**.
-2. Shoot Colin with 10 normal unpowered doughnuts. Check health bar, floating numbers and death count. With 1% probability, an individual doughnut instead deals double damage and shows bright `CRIT! -2` floating text; power-ups multiply that base damage before a critical doubles it.
-3. Repeatedly defeat Colins. On roughly **one in four deaths**, instead of disappearing, Colin should stop, become **red and visibly pulse for 2 seconds**, then produce a red/orange explosion wave reaching **128px**.
-4. Stand inside the explosion: a random **1–10 HP** is lost, reflected on the health bar and in floating text. Stand outside 128px: zero explosion damage.
-5. Have another Colin next to an exploding body: he should lose the **same randomly rolled HP amount**. If that kills him, he is counted toward the goal. There is a 25% chance he will become another bomb and detonate two seconds later.
-6. Clear the final living enemy while he is an armed corpse: the next wave should **wait until he explodes** and then start after a one-second breather.
-7. Kill 50 Colins or lose all player HP; no bombs or further waves should continue once the run ends.
-8. Confirm damage (red D), speed (cyan S) and size (purple +) pickups still stack and scale future doughnuts, while movement and aura mechanics are unchanged.
+1. Start a run. Wave 1 contains exactly **five** Colins: **3 yellow**, **1 red**, **1 blue**. All normal-sized variants show 10 HP.
+2. Defeat a yellow Colin. He disappears immediately and **never** explodes.
+3. Defeat a red Colin. He stays in place, pulses red for about **2 seconds**, then detonates in a **128px radius** and inflicts **1–10 damage** on every living Colin and the otter in range. Dead corpses cannot be attacked. A red Colin killed by an explosion produces a possible chain reaction.
+4. Approach a blue Colin. He should maintain distance and shoot a pencil about **once each second**, even when other Colins are nearby. A pencil hitting the otter deals a random **1–10 damage** and snaps. A pencil hitting a different Colin (yellow, red, blue or boss) damages them too. A pencil hitting a wall should snap without damage.
+5. Every wave 1–9 should contain **3 yellow, 1 red, 1 blue**, with randomized positions; wave transitions wait for red corpse explosions to resolve.
+6. On **round 10**, there should be **one oversized purple boss Colin plus four random minions**. The boss is at least double normal size, has **40 HP**, moves noticeably more slowly, fires pencils, and can life-drain the otter up close.
+7. Defeat the boss and four minions to reach **50 kills** and win. Otter death before then ends the run. Restart with R / A.
+8. Confirm the previous upgrades, 1% critical chance, health bars and floating combat text still function.
 
-Automated regression: `tests/waves_smoke.gd` now covers forced 100%/0% crits, forced 100% explosion, collateral damage, chained bombs, non-colliding corpses, delayed-wave scheduling and 50-kill/defeat behaviour.
+Automated tests: `tests/waves_smoke.gd` and `tests/variants_smoke.gd` run in GitHub Actions with Godot 4.5.2.
