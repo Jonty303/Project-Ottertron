@@ -1,0 +1,10 @@
+# Godot 4 generated imports and editor state
+.godot/
+
+# Local exports and OS files
+build/
+dist/
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
