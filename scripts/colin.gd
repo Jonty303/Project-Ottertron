@@ -65,7 +65,7 @@ func _physics_process(delta: float) -> void:
     if distance <= drain_start_range:
         _start_aura()
         velocity = Vector2.ZERO
-    elif distance < 700.0 and distance > 40.0:
+    elif distance > 40.0:
         velocity = separation.normalized() * move_speed
         art.set_facing(separation)
         move_and_slide()

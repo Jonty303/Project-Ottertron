@@ -1,13 +1,14 @@
-# Manual test checklist — Godot 4.5.2
+# Manual test plan — Godot 4.5.2
 
-1. Import the repository with Godot **4.5.2-stable**; run `scenes/main.tscn` (F5).
-2. Check the otter's overhead bar starts full at **12/12** and Colin at **2/2**.
-3. Move with left stick and fire with right stick; verify shooting stops when the right stick is released.
-4. Hit Colin with one ordinary doughnut: an orange/yellow **-1** appears and his health bar becomes 1/2. A second hit defeats him.
-5. Restart. Let Colin get within ~53px; see the purple wobbly aura and **LIFE DRAIN** status. Every 1 second a red damage number appears above the otter; HP reduces correctly.
-6. Remain channelled: the first three ticks each do 1 damage, the fourth does 2. Confirm the ramp continues up to 4 per tick.
-7. Move away until farther than 96px: **DRAIN BROKEN** appears; stop taking damage. Let Colin approach again and verify first tick returns to 1 after a fresh second.
-8. Restart and collect the glowing power-up northwest of the player: see **POWER UP** text; HUD changes doughnut damage from 1 to 2 and speed from 370 to 450. Verify the next ordinary hit defeats Colin.
-9. Lose all 12 HP and confirm the defeat screen and R/A restart. Validate keyboard WASD + arrow fallback too.
+1. Run with F5; HUD should read **0 / 50 kills**, **wave 1**, **5 enemies**, otter **12/12 HP**.
+2. Confirm five Colins spawn at safe distances and pursue the otter; all have small health bars and their own escalating life-drain auras.
+3. Defeat one Colin with two basic hits. Confirm kill count becomes **1**, four Colins remain and no new wave starts yet.
+4. Defeat the other four. Wave clear message appears, followed about a second later by five fresh Colins and wave number **2**.
+5. Repeat until 50 kills. Exactly ten five-enemy waves should have appeared. Victory stops gameplay and no additional wave spawns; R or joypad A restarts at zero kills.
+6. Let the otter lose all twelve HP before winning. Defeat stops gameplay and blocks new waves; restart works.
+7. Compare starting doughnuts to the prior version: visibly **smaller**, speed **315px/s** (previously 370), damage **1**.
+8. Collect each of the three pickups initially near the player: **red D** increases damage to 2; **cyan S** raises speed to 385px/s; **purple +** raises projectile size from 0.78× to 0.96×. Confirm a larger *collision hitbox*, not just artwork.
+9. Clear waves for another pickup of cycling type; additional upgrades stack, and existing in-flight projectiles retain their original stats.
+10. Verify floating hit numbers, aura tick damage, and channel break if >96px away.
 
-**Known scope:** Procedural art only; no sprite animations. Test checklist is provided but not yet executed in-engine by the assistant.
+**Automatic coverage:** GitHub Actions runs `tests/waves_smoke.gd` in headless Godot 4.5.2 as part of the validation workflow. Physical controller feel and sprite appearance still require manual playtesting.

@@ -1,10 +1,10 @@
 extends CharacterBody2D
-## Controller movement, directional auto-fire and upgradable doughnut stats.
+## Controller movement, directional fire, and independently upgradeable projectile stats.
 
 signal fire_requested(direction: Vector2)
 signal health_changed(current_health: int)
 signal damage_taken(amount: int)
-signal doughnut_stats_changed(damage: int, speed: float)
+signal doughnut_stats_changed(damage: int, speed: float, size_multiplier: float)
 signal defeated
 
 const MOVE_SPEED: float = 210.0
@@ -14,7 +14,9 @@ const FIRE_INTERVAL: float = 0.20
 
 @export var max_health: int = 12
 @export var doughnut_damage: int = 1
-@export var doughnut_speed: float = 370.0
+@export var doughnut_speed: float = 315.0
+@export var doughnut_size: float = 0.78
+@export var maximum_doughnut_size: float = 2.0
 
 var health: int = 12
 var _fire_cooldown: float = 0.0
@@ -83,7 +85,14 @@ func take_damage(amount: int) -> int:
         defeated.emit()
     return applied
 
-func apply_doughnut_upgrade(extra_damage: int, extra_speed: float) -> void:
-    doughnut_damage = maxi(1, doughnut_damage + extra_damage)
-    doughnut_speed = maxf(1.0, doughnut_speed + extra_speed)
-    doughnut_stats_changed.emit(doughnut_damage, doughnut_speed)
+func apply_doughnut_upgrade(kind: String, amount: float) -> void:
+    match kind:
+        "damage":
+            doughnut_damage += maxi(1, roundi(amount))
+        "speed":
+            doughnut_speed += maxf(1.0, amount)
+        "size":
+            doughnut_size = minf(maximum_doughnut_size, doughnut_size + maxf(0.01, amount))
+        _:
+            return
+    doughnut_stats_changed.emit(doughnut_damage, doughnut_speed, doughnut_size)

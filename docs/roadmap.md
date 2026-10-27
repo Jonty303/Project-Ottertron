@@ -1,23 +1,21 @@
 # Roadmap
 
-## v0.2 — health, attacks and power-ups
+## v0.3 — waves and doughnut varieties
 
-- [x] Target Godot 4.5.2-stable
-- [x] Player 12 HP and overhead health bar
-- [x] Colin 2 HP and overhead health bar
-- [x] Doughnut damage and speed properties
-- [x] Demonstration damage+speed power-up
-- [x] Colin slow pursuit and wobbly drain aura
-- [x] Increasing damage per drain tick and adjustable tick interval
-- [x] Drain breaks beyond 96px; ramps reset
-- [x] Floating hit, drain and pickup text
-- [ ] Run in Godot 4.5.2 and test gamepad feel
-- [ ] Replace placeholder art with individual transparent 64×64 sprites
+- [x] Five Colins in the starting wave
+- [x] Next wave automatically spawns after all previous enemies die
+- [x] Ten waves / 50 kills for victory, zero player HP for defeat
+- [x] Progress and weapon stats in HUD
+- [x] Initial doughnuts smaller (0.78×) and slower (315px/s)
+- [x] Distinct damage, speed and size power-ups
+- [x] Size upgrades scale art and collision shape
+- [x] Power-up reward on wave completion
+- [x] Headless tests for 50-kill run, defeat and upgrades
+- [ ] Controller playtest to tune difficulty with five aura users
+- [ ] Replace procedural character artwork with approved transparent 64×64 sprites
 
-## v0.3 — feel and balancing
+## Next
 
-- [ ] Tune aura break distance, ramp timing and visual feedback
-- [ ] Hit flash and audio for player and enemies
-- [ ] Add distinct pickup types and configurable level drops
-- [ ] Multiple Colins and multiple square room sizes
-- [ ] Tune HUD and camera limits
+- [ ] Test scaling/rewards against tougher waves and special enemies
+- [ ] Add music, hit flashes, richer pickup effects
+- [ ] Multiple square room configurations and additional enemy types

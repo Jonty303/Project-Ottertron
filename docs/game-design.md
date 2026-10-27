@@ -1,38 +1,39 @@
-# Project Ottertron — game design v0.2
+# Project Ottertron — game design v0.3
 
-**Engine:** Godot 4.5.2-stable. **Perspective:** top-down 2D. **Artwork target:** static directional 64×64 sprites (no animation yet). **Rooms:** square, variable dimensions later; prototype is 960×960.
+Engine: **Godot 4.5.2-stable**. A top-down shoot-'em-up in square arenas. Character art goal: static 64×64 directional pixel sprites, no animation.
 
-## Player: cuddly otter
+## Run structure
 
-- Rounded brown body, cream tummy and muzzle, expressive eyes and little whiskers.
-- Eight directional static views intended (otter UP-RIGHT is exact horizontal flip of UP-LEFT).
-- Left stick: free 360-degree movement; right stick: continuous aim/fire while deflected. Movement and aim independent.
-- **12 HP** to start; health bar above the otter plus HUD display.
-- Starting glazed doughnuts: **1 damage**, **370 px/s**, **0.20s** between shots. Damage and projectile speed stored as player weapon stats and copied onto each fired doughnut.
-- Collecting the test glowing power-up gives **+1 damage** and **+80 px/s** speed. Power-ups are designed to add further increases, not hardcoded weapon tiers.
+- The otter begins with **12 HP**. Loss at zero HP.
+- At the start, **5 Colin enemies** spawn inside the square arena, at least 225px away from the otter and typically at least 90px apart.
+- On clearing all enemies, a **one-second breather** precedes a fresh wave of five enemies; a reward pickup appears as the wave ends.
+- Repeat until **50 enemies** are killed (ten waves). Victory at 50, defeat if player HP reaches zero first; neither state allows extra waves.
+- HUD displays kill progress, wave, enemies remaining, player health and current doughnut stats.
+- Spawn locations are randomized in the playable interior, not on walls or the otter.
+
+## Weapons
+
+- Continuous firing while right stick deflected, independent left-stick movement, keyboard WASD/arrows fallback.
+- Doughnuts start with **damage 1**, **speed 315px/s** (down from 370), and **size 0.78×** (about 17px artwork width rather than the old 22px).
+- Projectiles have independently stored damage, speed and size and inherit player's stat values when fired.
+- Art scale **and hitbox radius** grow with size. Size capped at **2.0×** for now.
+
+## Pickups
+
+- Three *separate* types: red **D** = damage +1; blue **S** = speed +70px/s; purple **+** = size +0.18×.
+- All three spawn near the player for testing at the beginning of a run. One additional pickup appears when a wave is cleared; reward type cycles damage, speed, size by wave.
+- Pickups remain until collected. Values are adjustable in the pickup script and stats stack through the run.
+- Floating text announces collected upgrades.
 
 ## Enemy: Colin
 
-- Bald, rotund, glasses, yellow cardigan, white shirt/tie, brown trousers; initially static 64×64 directional character.
-- **2 HP** (two unupgraded glazed doughnut hits), with a small overhead health bar.
-- Slowly walks towards the otter (~68 px/s) until close enough to begin draining.
-- **Wobbly aura life drain**, with two animated purple wavy rings and a wobbly tether to the otter (effect animation, not sprite animation).
-- Starts draining at **53px** distance, immediately stops walking and channels while the target remains in range.
-- Initial damage **1 HP per tick**; first hit occurs **1 second after channel starts**.
-- Tick interval **1.0s**, adjustable independently.
-- Damage increases by 1 after every three completed ticks: ticks 1–3: 1; 4–6: 2; 7–9: 3; tick 10 onward: 4 (cap).
-- If separation exceeds **96px**, channel breaks (hysteresis intentionally avoids flickering) and resets timer and ramp. If Colin approaches and channels again it starts at 1 damage.
-- Both start and break distances are exported balance variables; 96px is inside the requested 64–128px range.
+- Small bald, rotund office worker with glasses, yellow cardigan, white shirt, tie and trousers. Static sprite art goal.
+- **2 HP** with overhead health bar. Slow pursuit (~68px/sec), including across the entire room.
+- Begins draining at 53px and holds a wobbly purple aura. Tick every 1.0 second. Damage per tick: 1 for first 3, 2 for next 3, 3 for next 3, capped at 4.
+- Escape further than 96px to break channel, stop ticking and reset the next channel's damage ramp.
+- Multiple Colins can channel independently. Damage taken by the otter and doughnut hits on Colins show floating numbers.
 
-## Combat readability
+## Planned
 
-- Small in-world overhead bars on player and enemies, decreasing as they lose HP.
-- Floating combat text near the victim for every damaging hit or drain tick (actual HP lost).
-- Life drain displays `LIFE DRAIN` when started and `DRAIN BROKEN` on breaking.
-- Power-up displays its impact on weapon stats.
-- No direct contact damage: Colin damages through his aura only.
-
-## Later
-
-- Replace procedural placeholders with approved sprite textures, without changing combat logic.
-- Room-size variants, more enemy types, differentiated doughnut and pickup stats, effects and audio.
+- Replace procedural placeholders with the approved 64×64 sprite artwork; the otter UP-RIGHT view is an exact mirror of UP-LEFT.
+- More varied enemy types, balancing, room variety and audio.

@@ -1,43 +1,43 @@
 # Project Ottertron
 
-A cute top-down twin-stick shoot-'em-up in **Godot 4.5.2-stable**. Play as a cuddly otter who fires glazed doughnuts at Colin, a slow, bald, rotund office worker in glasses and a yellow cardigan.
+A cute, top-down twin-stick shoot-'em-up using **Godot 4.5.2-stable**. Play a cuddly otter firing small glazed doughnuts at Colin, a slow, rotund office worker with a yellow cardigan and a wobbly life-drain aura.
 
-## Run
+## How to play
 
-1. Install [Godot 4.5.2-stable](https://godotengine.org/download/archive/4.5.2-stable/) (standard version).
+1. Install [Godot 4.5.2-stable](https://godotengine.org/download/archive/4.5.2-stable/).
 2. Clone or download this private repository.
-3. Open `project.godot` in Godot's Project Manager.
-4. Press **F5** to play.
+3. Import `project.godot` in Godot Project Manager, then press **F5**.
 
-| Action | Controller | Keyboard test |
+| Action | Joypad | Keyboard |
 | --- | --- | --- |
 | Move | Left stick | WASD |
-| Aim and shoot continuously | Right stick | Arrow keys |
-| Restart after the round | A / Cross | R |
+| Aim and shoot | Right stick (release to stop) | Arrows |
+| Restart after victory/defeat | A / Cross | R |
 
-## Current playable mechanics
+## Wave survival
 
-- Square room with blocking walls, camera follow and **static placeholder art**.
-- **Otter:** 12 HP; overhead health bar and HUD.
-- **Colin:** 2 HP; small overhead health bar; slowly approaches the otter.
-- **Doughnuts:** 1 starting damage and 370px/second starting speed; automatically fire while the aim stick is pushed. A glowing pickup in the room increases damage to 2 and speed to 450px/second.
-- **Colin's life drain:** Begins within **53px** and stops Colin moving while channelled. The wobbly purple aura ticks every **1 second** at damage 1, then ramps by 1 after each 3 completed ticks (max 4/tick). At more than **96px** separation, the channel breaks and its damage ramp resets. Colin can then approach again.
-- **Floating combat text:** Doughnut hits, incoming life-drain damage, aura starting/breaking and pickup messages float upward.
+- Fight **five Colins at a time** in one square arena.
+- Clearing *every Colin in the current wave* brings the next wave after a **one-second pause**. Enemies spawn away from the otter and each other and chase across the whole room.
+- Defeat **50 enemies total** (ten waves of five) to win. If the otter loses all **12 HP**, the run ends in defeat. The HUD tracks **kills / 50**, current wave, enemies remaining and weapon stats.
+- Colin has **2 HP**, moves slowly and channels a wobbly draining aura when close. Each 1-second tick escalates in damage over time; retreating beyond 96px interrupts and resets that channel.
+- Damage to either side is displayed as floating combat text. The player and each Colin have overhead health bars.
 
-Balancing knobs are exported on the player, Colin, doughnut and power-up scenes. The pickup demonstrates a power-up now; additional pickup types can follow.
+## Doughnut upgrades
 
-## Source structure
+Doughnuts begin **smaller and slower** than before: **0.78× size**, **315 pixels/sec**, **1 damage**.
 
-- `project.godot` and `ENGINE_VERSION`: pinned target engine version (Godot configuration stores the 4.5 feature compatibility tag).
-- `scenes/`: player, Colin, doughnut, pickup and game scene.
-- `scripts/`: actors, projectile behaviour, aura, combat text, health bars and room.
-- `docs/game-design.md`: gameplay and art specifications.
-- `docs/roadmap.md`: next steps.
+Three color-coded pickups are visible at the start and additional pickups appear between cleared waves:
 
-## Artwork
+| Pickup | Marking | Effect (stackable) |
+| --- | --- | --- |
+| Damage | Red / D | +1 doughnut damage |
+| Speed | Cyan / S | +70px/sec doughnut speed |
+| Size | Purple / + | +0.18× doughnut size, including collision radius (max 2.0×) |
 
-The current in-engine characters are procedural placeholders. The approved **64×64** pixel-art otter and Colin character reference remains the target, including the corrected otter UP-RIGHT directional view as the mirror of UP-LEFT. The reference concept image has not been imported as separate transparent 64×64 assets, and there is no animation in this prototype.
+Pickups carry only *one* type of upgrade, so the effects can be balanced independently. Each fired doughnut captures the three stats at launch; shots already in the air keep their previous stats.
 
-## Validation
+## Repository
 
-Changes are checked into GitHub, but a full Godot 4.5.2 editor/controller regression test still needs to be run locally. Please report any parser errors or gameplay oddities from F5 so they can be corrected.
+`scenes/` contains reusable player, Colin, doughnut and pickup scenes. `scripts/` contains gameplay systems, aura and floating combat text. `docs/game-design.md`, `docs/roadmap.md`, and `docs/test-plan.md` describe rules, outstanding work and manual tests. `tests/waves_smoke.gd` tests the wave loop and upgrade behaviour in Godot headless mode on every push.
+
+**Artwork status:** the in-game characters are procedural placeholders, not the approved 64×64 sprites. The directional sprite reference, including the mirrored otter UP-RIGHT pose, remains the art goal. No character animation is included.
