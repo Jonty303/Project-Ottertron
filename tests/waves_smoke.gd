@@ -78,7 +78,7 @@ func _run() -> void:
         if expected_wave == 10:
             check(bosses.size() == 1, "Final wave has exactly one boss Colin")
             if bosses.size() == 1:
-                check(bosses[0].max_health == 40, "Boss has four times the normal health")
+                check(bosses[0].max_health == ceili(40.0 * game.enemy_health_multiplier), "Boss has 4x base HP plus global health boons")
                 check(bosses[0].get_node("Art").scale.x >= 2.0, "Boss is at least twice as large")
                 check(bosses[0]._uses_aura and bosses[0]._shoots_pencils, "Boss uses both attack types")
         else:
