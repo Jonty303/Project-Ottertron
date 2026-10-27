@@ -91,6 +91,10 @@ func _run() -> void:
         return child.get_script() == bones_script and not child.is_queued_for_deletion()),
         "Bones persist after death")
 
+    # Finish teleport arrival before testing contact between active combatants.
+    for arriving in game.enemies:
+        if is_instance_valid(arriving) and arriving.health > 0:
+            arriving._process(0.72)
     # Enemy fire is contagious; burning targets don't have timers reset every frame.
     var living = game.enemies.filter(func(enemy: Node2D) -> bool: return enemy.health > 0)
     check(living.size() >= 2, "Two living Colins remain")
@@ -110,8 +114,8 @@ func _run() -> void:
         check(game.player.burn_ticks_left == 5, "Burning Colin ignites the otter")
         other.position = Vector2(400, 400)
         burning.position = Vector2(420, 400)
-        var avoidance: Vector2 = burning._avoid_burning_neighbours(Vector2.RIGHT)
-        check(avoidance.x < 1.0, "Burning Colin steers away from another Colin")
+        var avoidance: Vector2 = burning._avoid_burning_neighbours(Vector2.UP)
+        check(avoidance.x > 0.05, "Burning Colin steers sideways away from another Colin")
 
     game.queue_free()
     await process_frame

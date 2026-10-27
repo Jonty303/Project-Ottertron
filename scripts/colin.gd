@@ -107,7 +107,7 @@ func _configure_variant() -> void:
         _pencil_elapsed = 0.0
 
 func _process(delta: float) -> void:
-    if not _arrival_complete:
+    if not _arrival_complete and health > 0:
         spawn_delay -= delta
         art.modulate.a = clampf(1.0 - spawn_delay / 0.70, 0.12, 1.0)
         if spawn_delay <= 0.0:

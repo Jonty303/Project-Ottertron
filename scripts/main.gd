@@ -203,7 +203,7 @@ func _physics_process(_delta: float) -> void:
         for j in range(i + 1, living.size()):
             var a: Node2D = living[i]
             var b: Node2D = living[j]
-            var reach: float = 84.0 if (a.is_in_group("enemies") and a.variant == "boss") or (b.is_in_group("enemies") and b.variant == "boss") else 47.0
+            var reach: float = 84.0 if (a.is_in_group("enemies") and a.get("variant") == "boss") or (b.is_in_group("enemies") and b.get("variant") == "boss") else 47.0
             if a.global_position.distance_squared_to(b.global_position) > reach * reach:
                 continue
             if a.burn_ticks_left > 0 and b.burn_ticks_left <= 0:
