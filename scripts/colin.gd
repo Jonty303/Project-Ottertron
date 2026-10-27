@@ -7,8 +7,9 @@ signal aura_broken
 signal aura_tick(damage: int)
 signal explosion_requested(at: Vector2, radius: float, damage: int)
 signal pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D)
+signal ordnance_requested(at: Vector2, destination: Vector2, mine: bool, shooter: Node2D)
 
-@export_enum("normal", "explosive", "ranged", "boss") var variant: String = "normal"
+@export_enum("normal", "explosive", "ranged", "black", "boss") var variant: String = "normal"
 @export var max_health: int = 10
 @export var health_multiplier: float = 1.0
 @export var damage_multiplier: float = 1.0
@@ -22,6 +23,9 @@ signal pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D)
 
 @export_range(0.0, 1.0, 0.01) var explosion_chance: float = 0.0
 @export var pencil_interval: float = 1.0
+@export var bomb_interval: float = 2.1
+@export var mine_interval: float = 8.0
+@export var bomb_range: float = 770.0
 @export var pencil_range: float = 680.0
 @export var ranged_preferred_distance: float = 270.0
 @export var ranged_minimum_distance: float = 190.0
@@ -40,6 +44,8 @@ var _ticks_completed: int = 0
 var _aura_phase: float = 0.0
 var _glow_time: float = 0.0
 var _pencil_elapsed: float = 0.0
+var _bomb_elapsed: float = 0.0
+var _mine_elapsed: float = 0.0
 var _shoots_pencils: bool = false
 var _uses_aura: bool = true
 var _boss_size: float = 2.2
@@ -83,6 +89,15 @@ func _configure_variant() -> void:
             pencil_interval = 1.0
             move_speed = 58.0
             art.jumper_color = Color("#377dc8")
+        "black":
+            explosion_chance = 0.0
+            _uses_aura = false
+            _shoots_pencils = false
+            move_speed = 50.0
+            ranged_minimum_distance = 230.0
+            ranged_preferred_distance = 355.0
+            art.jumper_color = Color("#252630")
+            _mine_elapsed = randf_range(0.0, 1.4)
         "boss":
             explosion_chance = 0.0
             max_health = 40
@@ -146,6 +161,21 @@ func _physics_process(delta: float) -> void:
         return
     var separation: Vector2 = target.global_position - global_position
     var distance: float = separation.length()
+    if variant == "black" and distance <= bomb_range and distance > 0.01:
+        _bomb_elapsed += delta
+        _mine_elapsed += delta
+        if _bomb_elapsed >= bomb_interval:
+            _bomb_elapsed -= bomb_interval
+            var aim: Vector2 = separation.rotated(randf_range(-0.22, 0.22))
+            var bomb_landing: Vector2 = global_position + aim.limit_length(560.0)
+            ordnance_requested.emit(global_position, bomb_landing, false, self)
+            art.set_facing(separation)
+        if _mine_elapsed >= mine_interval:
+            _mine_elapsed = 0.0
+            var angle: float = randf_range(0.0, TAU)
+            var distance_to_mine: float = randf_range(170.0, 390.0)
+            var mine_landing: Vector2 = global_position + Vector2.RIGHT.rotated(angle) * distance_to_mine
+            ordnance_requested.emit(global_position, mine_landing, true, self)
     if _shoots_pencils and distance <= pencil_range and distance > 0.01:
         _pencil_elapsed += delta
         if _pencil_elapsed >= maxf(0.1, pencil_interval):
@@ -178,19 +208,19 @@ func _physics_process(delta: float) -> void:
     if _uses_aura and distance <= drain_start_range:
         _start_aura()
         velocity = Vector2.ZERO
-    elif variant == "ranged":
+    elif variant == "ranged" or variant == "black":
         # Ranged Colin tries to maintain space rather than running into melee.
         var desired_motion := Vector2.ZERO
         if distance < ranged_minimum_distance:
             desired_motion = -separation.normalized()
         elif distance > ranged_preferred_distance:
             desired_motion = separation.normalized()
-        velocity = _avoid_burning_neighbours(desired_motion) * move_speed
+        velocity = _avoid_mines(_avoid_burning_neighbours(desired_motion)) * move_speed
         if velocity != Vector2.ZERO:
             move_and_slide()
         art.set_facing(separation)
     elif distance > (70.0 if variant == "boss" else 40.0):
-        velocity = _avoid_burning_neighbours(separation.normalized()) * move_speed
+        velocity = _avoid_mines(_avoid_burning_neighbours(separation.normalized())) * move_speed
         art.set_facing(separation)
         move_and_slide()
     else:
@@ -310,3 +340,15 @@ func _avoid_burning_neighbours(direction: Vector2) -> Vector2:
     # Otter is never an avoidance target.
     var combined: Vector2 = direction + escape
     return combined.normalized() if combined != Vector2.ZERO else direction
+
+func _avoid_mines(direction: Vector2) -> Vector2:
+    var repel := Vector2.ZERO
+    for node in get_tree().get_nodes_in_group("armed_mines"):
+        if not is_instance_valid(node) or not node.armed:
+            continue
+        var away: Vector2 = global_position - node.global_position
+        var distance: float = away.length()
+        if distance < 165.0 and distance > 0.001:
+            repel += away / distance * 3.0 * (1.0 - distance / 165.0)
+    var combined: Vector2 = direction + repel
+    return combined.normalized() if combined.length_squared() > 0.01 else Vector2.ZERO
