@@ -633,7 +633,7 @@ func _focus_boon_selection() -> void:
     _boon_buttons[_boon_selection_index].grab_focus()
 
 func _confirm_boon_selection() -> void:
-    if not _boon_open or _boon_selection_index < 0 or _boon_selection_index >= BOON_ORDER.size():
+    if not _boon_open or _boon_selection_index < 0 or _boon_selection_index >= boon_order.size():
         return
     _choose_boon(boon_order[_boon_selection_index])
 
