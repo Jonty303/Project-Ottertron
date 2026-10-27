@@ -58,8 +58,9 @@ func _ready() -> void:
     health_bar.set_health(health, max_health)
     add_to_group("enemies")
     _arrival_complete = spawn_delay <= 0.0
+    health_bar.visible = _arrival_complete
     if not _arrival_complete:
-        art.modulate.a = 0.12
+        art.modulate.a = 0.0
         collision_layer = 0
         collision_mask = 0
         $CollisionShape2D.set_deferred("disabled", true)
@@ -109,10 +110,11 @@ func _configure_variant() -> void:
 func _process(delta: float) -> void:
     if not _arrival_complete and health > 0:
         spawn_delay -= delta
-        art.modulate.a = clampf(1.0 - spawn_delay / 0.70, 0.12, 1.0)
+        art.modulate.a = clampf(1.0 - spawn_delay / 0.70, 0.0, 1.0)
         if spawn_delay <= 0.0:
             _arrival_complete = true
             art.modulate.a = 1.0
+            health_bar.show()
             collision_layer = 2
             collision_mask = 9
             $CollisionShape2D.set_deferred("disabled", false)

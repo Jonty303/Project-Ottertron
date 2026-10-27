@@ -14,3 +14,17 @@
 - [x] Automated regression coverage added
 - [ ] Test larger crowds and effects with real controller
 - [ ] Improve enemy obstacle navigation and polished pixel-art effects
+
+
+## v1.0 — Black Colin and navigation aids
+
+- [x] New dark jumper Colin with imperfect, timed 1-second bombs
+- [x] Occasional randomized proximity mines with larger friendly-fire blast
+- [x] Enemy steering away from armed mines
+- [x] Otter enters first, wave-one enemies teleport a few seconds later
+- [x] Secret +1 enemy on the next wave after a damage-free clear
+- [x] Permanent-for-the-run enemy bones
+- [x] Tombstones persist through scene restarts within an application session
+- [x] Red screen-edge arrows point toward living offscreen enemies
+- [x] Add automated Black Colin, mine, persistence and offscreen-arrow tests
+- [ ] Manually tune blast damage, mine placement and camera edge-arrow layout

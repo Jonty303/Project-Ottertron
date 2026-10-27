@@ -13,3 +13,15 @@
 11. Verify health pickups, controller input, bounded camera, fire pits, boons and tombstone death scene still work.
 
 New headless smoke test: `tests/weapon_terrain_smoke.gd`.
+
+
+## v1.0 — acceptance tests
+
+1. Start a new run. The otter appears alone for roughly **2.5 seconds**; then eight Colins teleport in and become targetable after the shimmering entrance.
+2. Verify one black-jumpered Colin appears in a regular wave. He stays back, throws bombs in the otter's general direction roughly every 2 seconds, with each bomb exploding after **one second**.
+3. Wait for a mine: it should land in a randomized spot and remain. Lure any Colin or the otter over the mine to detonate it. Check the mine's **180px blast** is visibly larger than the thrown bomb's 112px blast and affects every living actor in range, including other Colins.
+4. Watch enemies near armed mines. They should try to skirt around them, though a mine remains dangerous if a character steps too close.
+5. Clear a wave with no loss of health and inspect the following wave: **one extra enemy** silently appears beyond the normal total. Take damage during the next wave and check the following wave returns to its normal count (before any boon-based multipliers).
+6. Lure enemies far outside the camera viewport. Red triangular **direction arrows** should appear at the appropriate screen edges and disappear as enemies enter view or die. Ensure arrows cannot extend outside the viewport.
+7. Confirm dead enemies continue leaving bone piles throughout the run. Lose the game, wait for the tombstone to land and restart. The previous tombstone should still stand in the same location even in the next run; bone piles should have reset.
+8. Verify controller boon navigation, camera world boundaries, health pickups and the boss fight still work.

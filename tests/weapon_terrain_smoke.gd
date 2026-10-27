@@ -94,6 +94,7 @@ func _run() -> void:
     # Finish teleport arrival before testing contact between active combatants.
     for arriving in game.enemies:
         if is_instance_valid(arriving) and arriving.health > 0:
+            arriving.spawn_delay = 0.71
             arriving._process(0.72)
     # Enemy fire is contagious; burning targets don't have timers reset every frame.
     var living = game.enemies.filter(func(enemy: Node2D) -> bool: return enemy.health > 0)

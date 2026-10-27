@@ -35,3 +35,18 @@ Normal Colin uses an escalating life-drain aura, red Colin always explodes after
 ## Development
 
 `scripts/` and `scenes/` contain the Godot logic; `tests/` contains headless Godot 4.5.2 CI smoke tests. Main gameplay art is still procedural placeholder art awaiting the approved pixel sprites.
+
+
+## v1.0 — Black Colin and battlefield awareness
+
+**Black Colin** wears a very dark jumper, stays at range, and throws dark bombs about every **2.1 seconds**. The bombs arc broadly toward the otter's vicinity, with slight random aim error, and explode **one second after launch**. Their 112px-radius blast hits the otter and nearby Colins. Approximately every **8 seconds**, Black Colin also throws a mine into a randomized location. Mines arm on landing and persist until an otter or Colin steps on them, causing a **larger 180px-radius explosion** with friendly fire. Each bomb or mine rolls **1–10 damage**, subject to permanent enemy-damage Chaos modifiers. Colins steer away from armed mines, but can still accidentally trigger them.
+
+Normal eight-enemy waves now include **four yellow, two red, one blue and one black Colin**; round-10 minions can also be black.
+
+**First-wave arrival:** the otter appears alone when play begins. After approximately **2.5 seconds**, enemies begin a 0.7-second teleport entrance; they cannot attack or collide until fully materialized at about 3.2 seconds.
+
+**Hidden flawless-wave scaling:** clear a wave without losing any HP during that wave, and the next wave secretly receives **one additional random Colin**. A later hit suppresses that bonus for the following wave. Existing Chaos extra-enemy modifiers remain separate.
+
+**Offscreen enemies:** living, fully arrived enemies beyond the camera window produce **red arrows on the screen edges** pointing toward their locations. The arrows disappear when an enemy is visible or defeated; menus hide them.
+
+**Persistent tombstones:** after the otter dies, its tombstone is recorded and restored in the same spot when a new run starts via restart. Multiple gravestones can accumulate during a play session; they reset only when the game application closes. Bone piles remain for the entire current run and disappear when that run restarts.

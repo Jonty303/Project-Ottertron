@@ -77,6 +77,7 @@ func _run() -> void:
     var boon_game = GAME.instantiate()
     root.add_child(boon_game)
     await process_frame
+    boon_game._wave_had_damage = true
     for enemy in boon_game.enemies.duplicate():
         enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)
@@ -86,6 +87,7 @@ func _run() -> void:
     await process_frame
     print("ENV TRACE: spawned wave 2")
     check(boon_game.wave == 2, "Second wave spawned")
+    boon_game._wave_had_damage = true
     for enemy in boon_game.enemies.duplicate():
         enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)
@@ -121,6 +123,7 @@ func _run() -> void:
     check(is_equal_approx(boon_game.player.doughnut_speed_multiplier, 1.25),
         "Doughnut projectile speed +25% permanently")
 
+    boon_game._wave_had_damage = true
     for enemy in boon_game.enemies.duplicate():
         enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)

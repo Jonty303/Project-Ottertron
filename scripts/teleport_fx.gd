@@ -1,18 +1,24 @@
 extends Node2D
 ## Brief entry shimmer for each newly summoned Colin.
 var duration: float = 0.70
+var start_delay: float = 0.0
 var _elapsed: float = 0.0
 
 func _ready() -> void:
     z_index = 9
 
 func _process(delta: float) -> void:
+    if start_delay > 0.0:
+        start_delay -= delta
+        return
     _elapsed += delta
     queue_redraw()
     if _elapsed >= duration:
         queue_free()
 
 func _draw() -> void:
+    if start_delay > 0.0:
+        return
     var t: float = clampf(_elapsed / duration, 0.0, 1.0)
     var alpha: float = (1.0 - t) * 0.80
     for i in range(3):

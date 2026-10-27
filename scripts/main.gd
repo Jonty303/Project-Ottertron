@@ -17,6 +17,8 @@ const HEALTH_PICKUP = preload("res://scripts/health_pickup.gd")
 const TELEPORT_FX = preload("res://scripts/teleport_fx.gd")
 const BONE_PILE = preload("res://scripts/bone_pile.gd")
 const DOUGHNUT_BLAST_FX = preload("res://scripts/doughnut_blast_fx.gd")
+const BLACK_BOMB = preload("res://scripts/black_bomb.gd")
+const OFFSCREEN_ARROWS = preload("res://scripts/offscreen_arrows.gd")
 
 const ROOM_SIDE: float = 1792.0
 const WALL_THICKNESS: float = 28.0
@@ -25,6 +27,8 @@ const LAST_WAVE: int = 10
 const INITIAL_WAVE_SIZE: int = 8
 const FOLLOWUP_WAVE_SIZE: int = 8
 const WAVE_DELAY: float = 1.0
+const FIRST_WAVE_SPAWN_DELAY: float = 3.2
+const TELEPORT_DURATION: float = 0.7
 const ENEMY_SPAWN_PLAYER_DISTANCE: float = 225.0
 const ENEMY_SPAWN_SEPARATION: float = 90.0
 
@@ -57,6 +61,9 @@ var wave: int = 0
 var _round_finished: bool = false
 var _win: bool = false
 var _wave_timer: float = -1.0
+var _wave_had_damage: bool = false
+var _next_wave_flawless_bonus: int = 0
+var _red_arrows: Control
 var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
@@ -75,6 +82,7 @@ func _ready() -> void:
     player.doughnut_stats_changed.connect(_on_doughnut_stats_changed)
     player.defeated.connect(_on_player_defeated)
     _place_environment()
+    _restore_tombstones()
 
     var camera := Camera2D.new()
     camera.zoom = Vector2.ONE * CAMERA_ZOOM
@@ -107,6 +115,9 @@ func _ready() -> void:
     interface.add_child(instructions)
     _create_game_over_dialog(interface)
     _create_boon_dialog(interface)
+    _red_arrows = OFFSCREEN_ARROWS.new()
+    _red_arrows.tracked_game = self
+    interface.add_child(_red_arrows)
 
     # Make all three power-up types available immediately for testing.
     _spawn_powerup("damage", Vector2(-105, -125))
@@ -231,8 +242,15 @@ func _spawn_wave() -> void:
     if _round_finished or wave >= LAST_WAVE or _boon_open or not enemies.is_empty() or not pending_bombs.is_empty():
         return
     wave += 1
+    _wave_had_damage = false
     var requested: int = INITIAL_WAVE_SIZE if wave == 1 else FOLLOWUP_WAVE_SIZE
     var roster: Array[String] = _build_wave_roster()
+    # Flawless bonus is a quiet, one-wave difficulty adjustment.
+    if _next_wave_flawless_bonus > 0:
+        for i in range(_next_wave_flawless_bonus):
+            roster.append(_roll_minion_type())
+        roster.shuffle()
+        _next_wave_flawless_bonus = 0
     var count: int = roster.size()
     for i in range(count):
         var enemy = COLIN_SCENE.instantiate()
@@ -241,15 +259,17 @@ func _spawn_wave() -> void:
         enemy.damage_multiplier = enemy_damage_multiplier
         enemy.position = _find_enemy_spawn()
         enemy.target = player
-        enemy.spawn_delay = 0.70
+        enemy.spawn_delay = FIRST_WAVE_SPAWN_DELAY if wave == 1 else TELEPORT_DURATION
         add_child(enemy)
         var teleport = TELEPORT_FX.new()
         teleport.position = enemy.position
+        teleport.start_delay = FIRST_WAVE_SPAWN_DELAY - TELEPORT_DURATION if wave == 1 else 0.0
         add_child(teleport)
         enemies.append(enemy)
         enemy.defeated.connect(_on_enemy_defeated.bind(enemy))
         enemy.explosion_requested.connect(_on_explosion_requested.bind(enemy))
         enemy.pencil_requested.connect(_on_pencil_requested)
+        enemy.ordnance_requested.connect(_on_black_ordnance_requested)
         enemy.aura_started.connect(_on_aura_started.bind(enemy))
         enemy.aura_broken.connect(_on_aura_broken.bind(enemy))
         enemy.aura_tick.connect(_on_aura_tick.bind(enemy))
@@ -266,7 +286,7 @@ func _build_wave_roster() -> Array[String]:
         for i in range(7):
             roster.append(_roll_minion_type())
     else:
-        roster.assign(["normal", "normal", "normal", "normal", "normal", "explosive", "explosive", "ranged"])
+        roster.assign(["normal", "normal", "normal", "normal", "explosive", "explosive", "ranged", "black"])
     var extra: int = maxi(0, ceili(float(requested_wave_size()) * enemy_spawn_multiplier) - roster.size())
     for i in range(extra):
         roster.append(_roll_minion_type())
@@ -278,11 +298,13 @@ func requested_wave_size() -> int:
 
 func _roll_minion_type() -> String:
     var roll: float = _rng.randf()
-    if roll < 0.55:
+    if roll < 0.45:
         return "normal"
-    if roll < 0.80:
+    if roll < 0.65:
         return "explosive"
-    return "ranged"
+    if roll < 0.85:
+        return "ranged"
+    return "black"
 
 func _find_enemy_spawn() -> Vector2:
     var inner_limit: float = ROOM_SIDE * 0.5 - WALL_THICKNESS - 46.0
@@ -317,6 +339,9 @@ func _is_good_enemy_spawn(candidate: Vector2) -> bool:
     for item in get_tree().get_nodes_in_group("hazards"):
         if candidate.distance_to(item.position) < 78.0:
             return false
+    for mine in get_tree().get_nodes_in_group("armed_mines"):
+        if is_instance_valid(mine) and candidate.distance_to(mine.global_position) < 165.0:
+            return false
     return true
 
 func _on_enemy_defeated(enemy: Node2D) -> void:
@@ -343,6 +368,8 @@ func _maybe_clear_wave() -> void:
     if wave >= LAST_WAVE:
         _end_round(true)
         return
+    if not _wave_had_damage:
+        _next_wave_flawless_bonus = 1
     if _wave_timer > 0.0 or _boon_open:
         return
     _floating_text(player.global_position + Vector2(0, -82),
@@ -454,6 +481,39 @@ func _on_doughnut_splash(at: Vector2, direct_victim: Node2D, damage: int) -> voi
                 _floating_text(enemy.global_position + Vector2(0, -47),
                     "-%d AOE" % applied, Color("#ffd18c"))
 
+func _on_black_ordnance_requested(at: Vector2, destination: Vector2,
+        mine: bool, shooter: Node2D) -> void:
+    if _round_finished or _boon_open or not is_instance_valid(shooter):
+        return
+    var item = BLACK_BOMB.new()
+    item.kind = "mine" if mine else "bomb"
+    item.shooter = shooter
+    item.damage_multiplier = shooter.damage_multiplier
+    item.global_position = at
+    var edge: float = ROOM_SIDE / 2.0 - WALL_THICKNESS - 36.0
+    item.destination = Vector2(
+        clampf(destination.x, -edge, edge), clampf(destination.y, -edge, edge))
+    add_child(item)
+    item.exploded.connect(_on_black_ordnance_exploded)
+
+func _on_black_ordnance_exploded(at: Vector2, radius: float,
+        damage: int, cause: String) -> void:
+    if _round_finished:
+        return
+    _spawn_mushroom_cloud(at, true, radius, 1.20 if radius >= 150.0 else 0.85)
+    if player.health > 0 and player.global_position.distance_to(at) <= radius:
+        player.take_damage(damage, cause)
+    if _round_finished:
+        return
+    for enemy in enemies.duplicate():
+        if not is_instance_valid(enemy) or enemy.health <= 0 or enemy.spawn_delay > 0.0:
+            continue
+        if enemy.global_position.distance_to(at) <= radius:
+            var dealt: int = enemy.take_damage(damage)
+            if dealt > 0:
+                _floating_text(enemy.global_position + Vector2(0, -48),
+                    "-%d" % dealt, Color("#ffac63"))
+
 func _on_pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D) -> void:
     if _round_finished:
         return
@@ -488,6 +548,8 @@ func _on_doughnut_damage(at: Vector2, amount: int, critical: bool) -> void:
     _update_hud()
 
 func _on_player_damage_taken(amount: int) -> void:
+    if amount > 0:
+        _wave_had_damage = true
     _floating_text(player.global_position + Vector2(0, -55), "-%d" % amount, Color("#ff7a91"))
 
 func _on_health_changed(_current_health: int) -> void:
@@ -546,6 +608,8 @@ func _end_round(victory: bool) -> void:
     pending_bombs.clear()
     for projectile in get_tree().get_nodes_in_group("projectiles"):
         projectile.queue_free()
+    for ordnance in get_tree().get_nodes_in_group("black_ordnance"):
+        ordnance.queue_free()
     _update_hud()
     if victory:
         _show_game_over_dialog()
@@ -577,8 +641,21 @@ func _start_tombstone_drop() -> void:
     var grave_point: Vector2 = player.global_position + Vector2(74, 12)
     grave_point.x = clampf(grave_point.x, -room_edge, room_edge)
     grave_point.y = clampf(grave_point.y, -room_edge, room_edge)
-    _tombstone.landed.connect(_show_game_over_dialog, CONNECT_ONE_SHOT)
+    _tombstone.landed.connect(_on_tombstone_landed, CONNECT_ONE_SHOT)
     _tombstone.drop_to(grave_point)
+
+func _restore_tombstones() -> void:
+    for location in RunHistory.tombstones:
+        var stone = TOMBSTONE.new()
+        stone.landing_point = location
+        stone.position = location
+        add_child(stone)
+        stone.finish_drop()
+
+func _on_tombstone_landed() -> void:
+    if is_instance_valid(_tombstone):
+        RunHistory.add_tombstone(_tombstone.landing_point)
+    _show_game_over_dialog()
 
 func _format_survival(seconds: float) -> String:
     var total: int = maxi(0, int(floor(seconds)))
@@ -716,6 +793,8 @@ func _offer_boon() -> void:
     player.status_paused = true
     for projectile in get_tree().get_nodes_in_group("projectiles"):
         projectile.queue_free()
+    for ordnance in get_tree().get_nodes_in_group("black_ordnance"):
+        ordnance.set_process(false)
     _boon_selection_index = 0
     _boon_stick_latched = false
     var offered: Array[String] = BOON_POOL.duplicate()
@@ -761,6 +840,8 @@ func _choose_boon(kind: String) -> void:
     if _boon_buttons.size() > 0:
         _boon_buttons[_boon_selection_index].release_focus()
     player.status_paused = false
+    for ordnance in get_tree().get_nodes_in_group("black_ordnance"):
+        ordnance.set_process(true)
     _wave_timer = WAVE_DELAY
     _update_hud()
 

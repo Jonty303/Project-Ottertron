@@ -87,6 +87,7 @@ func _run() -> void:
         var desired_count: int = 7 if expected_wave == 1 else 8
         check(enemies_this_wave.size() == desired_count,
             "Wave %d contains the expected remaining Colins" % expected_wave)
+        game._wave_had_damage = true
         for enemy in enemies_this_wave:
             enemy.explosion_chance = 0.0
             enemy.take_damage(enemy.max_health)

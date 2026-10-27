@@ -18,10 +18,11 @@ func _run() -> void:
     var game = GAME.instantiate()
     root.add_child(game)
     await process_frame
-    var counts: Dictionary = {"normal": 0, "explosive": 0, "ranged": 0}
+    var counts: Dictionary = {"normal": 0, "explosive": 0, "ranged": 0, "black": 0}
     var red: Node2D
     var blue: Node2D
     var yellow: Node2D
+    var black: Node2D
     for enemy in game.enemies:
         counts[enemy.variant] += 1
         check(enemy.max_health == 10, "All ordinary Colins have 10 HP")
@@ -34,18 +35,24 @@ func _run() -> void:
             check(is_equal_approx(enemy.explosion_chance, 1.0), "Red always explodes")
             check(enemy._uses_aura and not enemy._shoots_pencils, "Red keeps life drain")
             check(enemy.get_node("Art").jumper_color == Color("#c3343c"), "Red jumper")
+        elif enemy.variant == "black":
+            black = enemy
+            check(enemy.get_node("Art").jumper_color == Color("#252630"), "Black jumper")
+            check(not enemy._uses_aura and not enemy._shoots_pencils, "Black Colin throws explosives")
+            check(is_zero_approx(enemy.explosion_chance), "Black Colin doesn't explode on death")
         elif enemy.variant == "ranged":
             blue = enemy
             check(is_zero_approx(enemy.explosion_chance), "Blue never explodes")
             check(not enemy._uses_aura and enemy._shoots_pencils, "Blue uses pencils, no aura")
             check(enemy.get_node("Art").jumper_color == Color("#377dc8"), "Blue jumper")
             check(is_equal_approx(enemy.pencil_interval, 1.0), "Blue fires every second")
-    check(counts["normal"] == 5 and counts["explosive"] == 2 and counts["ranged"] == 1,
-        "Each regular wave contains 5 yellow, 2 red, 1 blue")
+    check(counts["normal"] == 4 and counts["explosive"] == 2 and counts["ranged"] == 1 and counts["black"] == 1,
+        "Regular waves contain 4 yellow, 2 red, 1 blue and 1 black")
 
     # The ranged enemy backs away when the player is too close.
     blue.set_physics_process(false)
-    blue._process(0.71)
+    blue.spawn_delay = 0.71
+    blue._process(0.72)
     blue.position = game.player.position + Vector2(100, 0)
     blue._physics_process(0.1)
     check(blue.velocity.x > 0.0, "Blue retreats when otter approaches")

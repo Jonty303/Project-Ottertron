@@ -34,3 +34,13 @@ A player may gain combinations of these upgrades, with existing projectile size,
 ## Next
 
 Balance eight-enemy crowds, render effects with approved pixel assets, tune fire contagion, navigation around rocks, and add audio.
+
+
+## v1.0 — Black Colin, awareness, and persistence
+
+- **Black Colin:** normal-size, 10 base HP, near-black jumper. Avoids close range, throws aimed but imperfect explosive bombs roughly every 2.1 seconds toward the otter; each blows after a **one-second fuse** with radius **112px**. Independently tosses mines about every **8 seconds** into randomized in-bounds locations. The mine waits after landing and explodes when any living actor comes within **29px**, producing a wider **180px** blast. Both affect other Colins and the otter with base **1–10 damage**. Mine proximity adds steering avoidance for living enemies, without guaranteeing perfect pathfinding.
+- Regular wave mix: **4 yellow / 2 red / 1 blue / 1 black**. Weighted-random boss minions may include black Colins.
+- At the beginning of a run, otter materializes first. Enemies do not visibly teleport until approximately **2.5 seconds** later and become tangible around **3.2 seconds**.
+- A hidden **+1 random enemy in the next wave** is earned whenever a wave ends with no player damage during that wave. Bonus does not build cumulatively; it is recalculated for each following wave and does not generate any announcement.
+- HUD overlay displays red edge-facing triangle arrows for living offscreen enemies once they finish teleporting, projected from the active camera viewport. Indicators are hidden while showing Chaos boons or game-over results.
+- At otter death, keep the landed tombstone positions in a scene-persistent **RunHistory** singleton. Restore them on new runs at the same world coordinates (all gravestones persist through restarts in the same application session). Bones persist in their existing run only.
