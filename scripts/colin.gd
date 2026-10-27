@@ -43,6 +43,10 @@ var _pencil_elapsed: float = 0.0
 var _shoots_pencils: bool = false
 var _uses_aura: bool = true
 var _boss_size: float = 2.2
+var burn_ticks_left: int = 0
+var _burn_elapsed: float = 0.0
+var spawn_delay: float = 0.0
+var _arrival_complete: bool = false
 
 @onready var art = $Art
 @onready var health_bar = $HealthBar
@@ -53,6 +57,15 @@ func _ready() -> void:
     health = max_health
     health_bar.set_health(health, max_health)
     add_to_group("enemies")
+    _arrival_complete = spawn_delay <= 0.0
+    if not _arrival_complete:
+        art.modulate.a = 0.12
+        collision_layer = 0
+        collision_mask = 0
+        $CollisionShape2D.set_deferred("disabled", true)
+    var flames = preload("res://scripts/burn_fx.gd").new()
+    flames.name = "BurnFX"
+    add_child(flames)
 
 func _configure_variant() -> void:
     # All variants share death tracking and damage, but each has a distinct role.
@@ -94,6 +107,15 @@ func _configure_variant() -> void:
         _pencil_elapsed = 0.0
 
 func _process(delta: float) -> void:
+    if not _arrival_complete:
+        spawn_delay -= delta
+        art.modulate.a = clampf(1.0 - spawn_delay / 0.70, 0.12, 1.0)
+        if spawn_delay <= 0.0:
+            _arrival_complete = true
+            art.modulate.a = 1.0
+            collision_layer = 2
+            collision_mask = 9
+            $CollisionShape2D.set_deferred("disabled", false)
     if pending_explosion:
         _explosion_remaining -= delta
         _glow_time += delta
@@ -113,6 +135,10 @@ func _process(delta: float) -> void:
         queue_redraw()
 
 func _physics_process(delta: float) -> void:
+    if spawn_delay > 0.0:
+        velocity = Vector2.ZERO
+        return
+    _tick_burn(delta)
     if not is_instance_valid(target) or health <= 0:
         velocity = Vector2.ZERO
         return
@@ -157,12 +183,12 @@ func _physics_process(delta: float) -> void:
             desired_motion = -separation.normalized()
         elif distance > ranged_preferred_distance:
             desired_motion = separation.normalized()
-        velocity = desired_motion * move_speed
+        velocity = _avoid_burning_neighbours(desired_motion) * move_speed
         if velocity != Vector2.ZERO:
             move_and_slide()
         art.set_facing(separation)
     elif distance > (70.0 if variant == "boss" else 40.0):
-        velocity = separation.normalized() * move_speed
+        velocity = _avoid_burning_neighbours(separation.normalized()) * move_speed
         art.set_facing(separation)
         move_and_slide()
     else:
@@ -249,3 +275,36 @@ func _drain_damage_source() -> String:
             return "Red Colin's life-drain aura"
         _:
             return "Colin's life-drain aura"
+
+func apply_burn(ticks: int = 5) -> void:
+    if health <= 0:
+        return
+    burn_ticks_left = maxi(0, ticks)
+    _burn_elapsed = 0.0
+
+func receive_contagious_burn() -> void:
+    if burn_ticks_left <= 0 and health > 0:
+        apply_burn(5)
+
+func _tick_burn(delta: float) -> void:
+    if burn_ticks_left <= 0 or health <= 0:
+        return
+    _burn_elapsed += delta
+    while _burn_elapsed >= 1.0 and burn_ticks_left > 0 and health > 0:
+        _burn_elapsed -= 1.0
+        burn_ticks_left -= 1
+        take_damage(1)
+
+func _avoid_burning_neighbours(direction: Vector2) -> Vector2:
+    if burn_ticks_left <= 0:
+        return direction
+    var escape := Vector2.ZERO
+    for other in get_tree().get_nodes_in_group("enemies"):
+        if other == self or not is_instance_valid(other) or other.health <= 0:
+            continue
+        var away: Vector2 = global_position - other.global_position
+        if away.length() < 122.0 and away.length_squared() > 0.001:
+            escape += away.normalized() * (1.0 - away.length() / 122.0) * 2.2
+    # Otter is never an avoidance target.
+    var combined: Vector2 = direction + escape
+    return combined.normalized() if combined != Vector2.ZERO else direction

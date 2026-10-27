@@ -1,5 +1,5 @@
 extends Node2D
-## Wave survival: five Colins per wave, win at 50 defeats, or lose at zero HP.
+## Ten larger waves; persistent Chaos boons, teleport entry and permanent remains.
 
 const PLAYER_SCENE: PackedScene = preload("res://scenes/player.tscn")
 const COLIN_SCENE: PackedScene = preload("res://scenes/colin.tscn")
@@ -14,13 +14,16 @@ const TERRAIN_OBSTACLE = preload("res://scripts/terrain_obstacle.gd")
 const SPIKE_TRAP = preload("res://scripts/spike_trap.gd")
 const FIRE_PIT = preload("res://scripts/fire_pit.gd")
 const HEALTH_PICKUP = preload("res://scripts/health_pickup.gd")
+const TELEPORT_FX = preload("res://scripts/teleport_fx.gd")
+const BONE_PILE = preload("res://scripts/bone_pile.gd")
+const DOUGHNUT_BLAST_FX = preload("res://scripts/doughnut_blast_fx.gd")
 
 const ROOM_SIDE: float = 1792.0
 const WALL_THICKNESS: float = 28.0
-const TARGET_KILLS: int = 50 # Base 10-wave objective; boons can raise actual kills.
+const TARGET_KILLS: int = 80 # Base ten-wave target; bonus spawns raise kill count.
 const LAST_WAVE: int = 10
-const INITIAL_WAVE_SIZE: int = 5
-const FOLLOWUP_WAVE_SIZE: int = 5
+const INITIAL_WAVE_SIZE: int = 8
+const FOLLOWUP_WAVE_SIZE: int = 8
 const WAVE_DELAY: float = 1.0
 const ENEMY_SPAWN_PLAYER_DISTANCE: float = 225.0
 const ENEMY_SPAWN_SEPARATION: float = 90.0
@@ -32,7 +35,8 @@ var _boon_open: bool = false
 var _boon_buttons: Array[Button] = []
 var _boon_selection_index: int = 0
 var _boon_stick_latched: bool = false
-const BOON_ORDER: Array[String] = ["swarm", "fortitude", "ferocity"]
+const BOON_POOL: Array[String] = ["swarm", "fortitude", "ferocity", "angle", "double", "pierce", "blast"]
+var boon_order: Array[String] = ["swarm", "fortitude", "ferocity"]
 const CAMERA_ZOOM: float = 0.85
 var boons_chosen: Array[String] = []
 var enemy_spawn_multiplier: float = 1.0
@@ -186,6 +190,27 @@ func _process(delta: float) -> void:
             _wave_timer = -1.0
             _spawn_wave()
 
+func _physics_process(_delta: float) -> void:
+    if _round_finished or _boon_open or not is_instance_valid(player) or player.health <= 0:
+        return
+    # Burning actors are contagious on physical contact. Newly infected actors
+    # become burning sources; no timer refresh happens every frame.
+    var living: Array[Node2D] = [player]
+    for enemy in enemies:
+        if is_instance_valid(enemy) and enemy.health > 0 and enemy.spawn_delay <= 0.0:
+            living.append(enemy)
+    for i in range(living.size()):
+        for j in range(i + 1, living.size()):
+            var a: Node2D = living[i]
+            var b: Node2D = living[j]
+            var reach: float = 84.0 if (a.is_in_group("enemies") and a.variant == "boss") or (b.is_in_group("enemies") and b.variant == "boss") else 47.0
+            if a.global_position.distance_squared_to(b.global_position) > reach * reach:
+                continue
+            if a.burn_ticks_left > 0 and b.burn_ticks_left <= 0:
+                b.receive_contagious_burn()
+            elif b.burn_ticks_left > 0 and a.burn_ticks_left <= 0:
+                a.receive_contagious_burn()
+
 func _restart_button_pressed() -> bool:
     var pads: Array[int] = Input.get_connected_joypads()
     return not pads.is_empty() and Input.is_joy_button_pressed(pads[0], JOY_BUTTON_A)
@@ -216,7 +241,11 @@ func _spawn_wave() -> void:
         enemy.damage_multiplier = enemy_damage_multiplier
         enemy.position = _find_enemy_spawn()
         enemy.target = player
+        enemy.spawn_delay = 0.70
         add_child(enemy)
+        var teleport = TELEPORT_FX.new()
+        teleport.position = enemy.position
+        add_child(teleport)
         enemies.append(enemy)
         enemy.defeated.connect(_on_enemy_defeated.bind(enemy))
         enemy.explosion_requested.connect(_on_explosion_requested.bind(enemy))
@@ -229,15 +258,15 @@ func _spawn_wave() -> void:
     _update_hud()
 
 func _build_wave_roster() -> Array[String]:
-    # Waves 1-9 are deliberately predictable in difficulty: 60% yellow,
+    # Waves 1-9 are deliberately predictable in difficulty: mostly yellow,
     # 20% red explosives, 20% blue pencil throwers.
     var roster: Array[String] = []
     if wave == 10:
         roster.append("boss")
-        for i in range(4):
+        for i in range(7):
             roster.append(_roll_minion_type())
     else:
-        roster.assign(["normal", "normal", "normal", "explosive", "ranged"])
+        roster.assign(["normal", "normal", "normal", "normal", "normal", "explosive", "explosive", "ranged"])
     var extra: int = maxi(0, ceili(float(requested_wave_size()) * enemy_spawn_multiplier) - roster.size())
     for i in range(extra):
         roster.append(_roll_minion_type())
@@ -301,6 +330,7 @@ func _on_enemy_defeated(enemy: Node2D) -> void:
     else:
         _spawn_mushroom_cloud(enemy.global_position, false, 0.0,
             1.55 if enemy.variant == "boss" else 1.0)
+        _spawn_bones(enemy.global_position, 1.6 if enemy.variant == "boss" else 1.0)
     if not _round_finished and player.health < player.max_health and _rng.randf() < 0.20:
         _spawn_health_pickup(enemy.global_position)
     _maybe_clear_wave()
@@ -328,6 +358,7 @@ func _on_explosion_requested(at: Vector2, radius: float, damage: int, bomb: Node
         return
     if not _round_finished:
         _spawn_mushroom_cloud(at, true, radius)
+        _spawn_bones(at)
         damage = maxi(1, ceili(float(damage) * bomb.damage_multiplier))
         # A single random base 1-10 HP value, scaled by global enemy damage.
         # to each living target within 128px; the dead owner is excluded.
@@ -377,17 +408,51 @@ func _spawn_powerup(kind: String, at: Vector2) -> void:
     power_up.collected.connect(_on_powerup_collected)
 
 func _on_player_fire(direction: Vector2) -> void:
-    if _round_finished:
+    if _round_finished or _boon_open:
         return
+    # The front lane and both ±45 degree lanes share every weapon upgrade.
+    var directions: Array[Vector2] = [direction.normalized()]
+    if player.boon_angled:
+        directions.append(direction.rotated(PI / 4.0).normalized())
+        directions.append(direction.rotated(-PI / 4.0).normalized())
+    for lane_index in range(directions.size()):
+        var firing_direction: Vector2 = directions[lane_index]
+        _launch_doughnut(firing_direction, lane_index == 0, -1 if player.boon_extra_shot else 0)
+        if player.boon_extra_shot:
+            _launch_doughnut(firing_direction, lane_index == 0, 1)
+
+func _launch_doughnut(direction: Vector2, front: bool, lateral_side: int) -> void:
     var shot = DOUGHNUT_SCENE.instantiate()
     shot.direction = direction
     shot.damage = maxi(1, ceili(float(player.doughnut_damage) * player.doughnut_damage_multiplier))
     shot.speed = player.doughnut_speed * player.doughnut_speed_multiplier
     shot.size_multiplier = player.doughnut_size
     shot.critical_chance = player.doughnut_critical_chance
-    shot.position = player.position + direction * (26.0 + 12.0 * player.doughnut_size)
+    shot.exploding_front = front and player.boon_front_explosion
+    shot.piercing = player.boon_piercing and not shot.exploding_front
+    var side: float = 0.0 if lateral_side == 0 else float(lateral_side) * 12.0
+    # -1 denotes the initial single lane unless the extra-shot boon is active.
+    if lateral_side == -1 and not player.boon_extra_shot:
+        side = 0.0
+    shot.position = player.position + direction * (26.0 + 12.0 * player.doughnut_size) + direction.orthogonal() * side
     add_child(shot)
     shot.damage_dealt.connect(_on_doughnut_damage)
+    shot.splash_requested.connect(_on_doughnut_splash)
+
+func _on_doughnut_splash(at: Vector2, direct_victim: Node2D, damage: int) -> void:
+    if _round_finished:
+        return
+    var fx = DOUGHNUT_BLAST_FX.new()
+    fx.position = at
+    add_child(fx)
+    for enemy in enemies.duplicate():
+        if not is_instance_valid(enemy) or enemy == direct_victim or enemy.health <= 0:
+            continue
+        if enemy.global_position.distance_to(at) <= fx.radius:
+            var applied: int = enemy.take_damage(damage)
+            if applied > 0:
+                _floating_text(enemy.global_position + Vector2(0, -47),
+                    "-%d AOE" % applied, Color("#ffd18c"))
 
 func _on_pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D) -> void:
     if _round_finished:
@@ -488,6 +553,12 @@ func _end_round(victory: bool) -> void:
         _death_sequence_remaining = 0.52
 
 
+func _spawn_bones(at: Vector2, size: float = 1.0) -> void:
+    var bones = BONE_PILE.new()
+    bones.position = at
+    bones.size_multiplier = size
+    add_child(bones)
+
 func _spawn_mushroom_cloud(at: Vector2, deals_damage: bool, blast_radius: float,
         effect_scale: float = 1.0) -> void:
     var cloud = MUSHROOM_CLOUD.new()
@@ -564,7 +635,24 @@ func _focus_boon_selection() -> void:
 func _confirm_boon_selection() -> void:
     if not _boon_open or _boon_selection_index < 0 or _boon_selection_index >= BOON_ORDER.size():
         return
-    _choose_boon(BOON_ORDER[_boon_selection_index])
+    _choose_boon(boon_order[_boon_selection_index])
+
+func _boon_label(kind: String) -> String:
+    match kind:
+        "swarm": return "More Colins (+25%)  /  Doughnut damage +25%"
+        "fortitude": return "Enemy HP +30%  /  Otter speed +20%"
+        "ferocity": return "Enemy damage +25%  /  Doughnut speed +25%"
+        "angle": return "Enemy HP +10%  /  Add shots at ±45 degrees"
+        "double": return "Enemies +15%  /  Add one donut to every firing lane"
+        "pierce": return "Enemy damage +10%  /  Donuts pierce enemies"
+        "blast": return "Enemy HP +15%  /  Front donuts get small AOE blasts"
+    return kind
+
+func _choose_boon_by_index(index: int) -> void:
+    if not _boon_open or index < 0 or index >= boon_order.size():
+        return
+    _boon_selection_index = index
+    _choose_boon(boon_order[index])
 
 func _create_boon_dialog(layer: CanvasLayer) -> void:
     _boon_overlay = ColorRect.new()
@@ -609,18 +697,13 @@ func _create_boon_dialog(layer: CanvasLayer) -> void:
     controls.add_theme_color_override("font_color", Color("#d7c0ed"))
     content.add_child(controls)
 
-    var choices := [
-        ["swarm", "+25% enemies next waves    /    +25% player doughnut damage"],
-        ["fortitude", "+30% enemy health    /    +20% otter movement speed"],
-        ["ferocity", "+25% enemy damage    /    +25% doughnut flight speed"]
-    ]
     _boon_buttons.clear()
-    for entry in choices:
+    for i in range(3):
         var button := Button.new()
-        button.text = entry[1]
+        button.text = _boon_label(boon_order[i])
         button.custom_minimum_size = Vector2(648, 73)
         button.add_theme_font_size_override("font_size", 17)
-        button.pressed.connect(_choose_boon.bind(entry[0]))
+        button.pressed.connect(_choose_boon_by_index.bind(i))
         content.add_child(button)
         button.focus_mode = Control.FOCUS_ALL
         _boon_buttons.append(button)
@@ -635,6 +718,11 @@ func _offer_boon() -> void:
         projectile.queue_free()
     _boon_selection_index = 0
     _boon_stick_latched = false
+    var offered: Array[String] = BOON_POOL.duplicate()
+    offered.shuffle()
+    boon_order.assign(offered.slice(0, 3))
+    for i in range(_boon_buttons.size()):
+        _boon_buttons[i].text = _boon_label(boon_order[i])
     _boon_overlay.show()
     _focus_boon_selection()
     _update_hud()
@@ -652,6 +740,18 @@ func _choose_boon(kind: String) -> void:
         "ferocity":
             enemy_damage_multiplier *= 1.25
             player.doughnut_speed_multiplier *= 1.25
+        "angle":
+            enemy_health_multiplier *= 1.10
+            player.boon_angled = true
+        "double":
+            enemy_spawn_multiplier *= 1.15
+            player.boon_extra_shot = true
+        "pierce":
+            enemy_damage_multiplier *= 1.10
+            player.boon_piercing = true
+        "blast":
+            enemy_health_multiplier *= 1.15
+            player.boon_front_explosion = true
         _:
             return
     boons_chosen.append(kind)

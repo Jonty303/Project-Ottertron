@@ -33,6 +33,8 @@ func _on_body_entered(body: Node2D) -> void:
     if _spent or body == shooter:
         return
     _spent = true
+    if body.is_in_group("obstacles") and body.has_method("take_projectile_hit"):
+        body.take_projectile_hit()
     if body.has_method("take_damage"):
         var low: int = maxi(1, mini(minimum_damage, maximum_damage))
         var high: int = maxi(low, maxi(minimum_damage, maximum_damage))

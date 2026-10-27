@@ -37,6 +37,7 @@ func _run() -> void:
     spike._process(0.14)
     check(game.player.health == hp - 2, "Spike pops for exactly 2 damage")
     check(game.player.last_damage_source == "Pop-up spike trap", "Spike death source recorded")
+    spike._on_body_exited(game.player)
     spike._process(0.7)
     check(not spike.triggered, "Spikes retract after popping")
 
@@ -104,7 +105,7 @@ func _run() -> void:
     await process_frame
     print("ENV TRACE: spawned wave 3")
     check(boon_game.wave == 3, "Third wave spawns after boon")
-    check(boon_game.enemies.size() == 7, "Five enemies increased by 25% rounded up to seven")
+    check(boon_game.enemies.size() == 10, "Eight enemies increased by 25% to ten")
 
     # Further choices persist and affect subsequently spawned enemies.
     boon_game._offer_boon()
@@ -127,7 +128,7 @@ func _run() -> void:
     await process_frame
     await process_frame
     check(boon_game.wave == 4, "Wave controller continues after stacking boons")
-    check(boon_game.enemies.size() == 7, "Extra enemies persist into later waves")
+    check(boon_game.enemies.size() == 10, "Extra enemies persist into later waves")
     for enemy in boon_game.enemies:
         var expected_base: int = 40 if enemy.variant == "boss" else 10
         check(enemy.max_health == ceili(float(expected_base) * 1.30),

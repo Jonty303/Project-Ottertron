@@ -1,43 +1,36 @@
-# Project Ottertron — game design v0.7
+# Project Ottertron — v0.9 gameplay design
 
-**Engine:** Godot 4.5.2-stable. **Camera:** top-down camera constrained to an expanded **1792×1792px arena**.
+**Engine:** Godot 4.5.2. **Arena:** 1792×1792; camera 1280×800 at 0.85 zoom with hard room bounds.
 
-## Arena
+## Enemies
 
-There are **13 solid blocking rock/plant features**, **5 pop-up spike traps** and **3 animated fire pits**, initially placed at fixed safe positions. Solid features block player, enemies and both projectile families via collision layer 8, and enemy spawning avoids them and hazards.
+- Wave 1–9: **8 Colins** — five regular yellow, two red explosive and one blue ranged.
+- Wave 10: one oversized slow boss Colin with life drain, pencils and 40 starting HP, plus seven random minions.
+- Additional Colins may be added by persistent Chaos modifiers; completion is after fully clearing wave 10, not a fixed kill count.
+- All Colins **teleport into the arena** with a brief 0.7s glowing entry effect, during which their collisions and AI are disabled.
+- Every defeated Colin leaves a **permanent bone pile** (no collision), whether death is from doughnuts, fire, pencils, spikes or red blasts. A red Colin's pile appears after its delayed damaging explosion, while all types also get a mushroom-cloud effect.
 
-- **Spike trap:** triggered when otter enters the plate (30px radius). Spikes pop over a short 0.12s warning and deal **2 damage** when triggered. They retract after 0.68s, then cool down 2.8s before being able to reactivate following re-entry.
-- **Fire pit:** applies a **five-tick burn** to the otter on entry; each tick is **1 HP exactly one second apart**. No instant damage. Animated fire draws on pit and burning otter. Reapplication refreshes the five ticks. Ticks pause during boon selection, and death reason is `Fire pit burn`.
-- **Health pickup:** restores **3 HP** without exceeding 12 HP, cannot be consumed at full health. One starts in the room; additional pickup drop chance is **20% on enemy kill if player is wounded**.
+## Weapon boons
 
-## Chaos boons
+One of three randomized options is chosen after each even wave 2/4/6/8. Each boon grants a player benefit and a permanent enemy trade-off.
 
-At the end of waves **2, 4, 6 and 8**, when all enemies and any red bombs are resolved, offer a **three-choice modal**. There is no combat until a selection is made; survivor timer and burn ticks are paused. The paired modifiers remain active and compound when selected more than once:
+Existing: +25% more enemies/+25% doughnut damage, +30% enemy HP/+20% otter movement, +25% enemy damage/+25% doughnut speed.
 
-1. **Swarm:** enemies spawned ×1.25 (rounded up from the five-enemy base); otter doughnut damage ×1.25 (rounded up to integer on each fired shot).
-2. **Fortitude:** newly spawned enemy health ×1.30 (rounded up); otter movement speed ×1.20.
-3. **Ferocity:** future enemy damage ×1.25 (rounded up per hit/tick), including draining, pencil impacts and red explosions; otter doughnut speed ×1.25.
+New:
+- **Tri-shot:** +10% enemy HP; shoots 45° left and right in addition to front.
+- **Double-shot:** +15% enemies; duplicates every lane (single or triple) using slight lateral spacing.
+- **Piercing:** +10% enemy damage; shots continue through multiple distinct Colins, hitting each once, but stop at rocks and intact bushes.
+- **Front blast:** +15% enemy HP; front-lane shots burst for 40% damage (minimum 1) to *other* Colins within **57px** at any impact. They cannot pierce even with Piercing active. Diagonal shots continue to pierce.
 
-Enemy modifiers scale from the global cumulative multipliers and apply to subsequently spawned enemies. Upgraded player stats persist the entire run; all reset on restart. Existing traditional damage/speed/size pickups remain separate.
+A player may gain combinations of these upgrades, with existing projectile size, speed, damage and critical modifiers applied to each donut.
 
-## Waves, winning and losing
+## Environmental rules
 
-Waves 1–9 initially contain **3 yellow + 1 red + 1 blue Colin**. Wave 10 has **1 large, slow boss Colin + 4 randomly chosen minions**, before any extra-spawn modifiers. Bonus enemies are randomly selected normal/red/blue. Enemy spawn points are away from the otter, walls, obstacles, traps, pickups and one another.
+- Rocks cannot be destroyed. Bushes have exactly **three projectile hit points** (hits, not weapon damage). They shake for ~0.26s when shot and remain as low, non-blocking leaf piles when destroyed. Both pencils and doughnuts count as hits.
+- Spike traps show only small dark holes while inactive. Entry by **any actor** triggers a ~0.12s pop-up which damages otter and Colins for 2 once each; spikes stay up while occupied and retract when the last occupant leaves. AI does not pathfind around traps.
+- Fire pits apply a **five-second burn** to otter or Colin, one point every second. Burn spreads via physical contact from burning to unburned actors; contact does not continually reset ongoing burns. Burning Colins avoid neighbouring Colins but still pursue/target the otter. Player and enemy both show animated flames while burning.
+- Healing pickups retain 3 HP restore with maximum player health cap.
 
-**Base target is 50 enemies across 10 waves**, but a swarm boon means the actual kill count may be higher. Victory occurs when **wave 10** is cleared, including delayed red explosions. Defeat occurs at zero otter HP; the otter collapses, gravestone descends and results modal identifies the actual lethal damage and survival time.
+## Next
 
-## Retained combat
-
-Yellow 10 HP, red 10 HP always explodes after 0.9s, blue 10 HP fires snapping friendly-fire pencils, boss base 40 HP and 2.2× visual scale with life drain and pencils. Life-drain escalates each second and resets after a range break. Red explosion base damage rolls 1–10 inside 128px and hurts otter and other living Colins. Doughnuts begin at 1 damage, 315px/s, 0.78× with 1% double-damage critical chance. Pickups boost damage +1, speed +70 or size +0.18×.
-
-## Art and roadmap
-
-Characters remain procedural placeholders pending approved static 64×64 direction sprites. Terrain, flame, spike and pickup visual effects are also temporary procedural art.
-
-
-## v0.8 — view and controls
-
-- Widescreen gameplay viewport: **1280×800**. The arena remains **1792×1792 world pixels**.
-- Camera zoom is **0.85×**, giving approximately **1506×941 world pixels** of coverage; view centre is constrained so the visible rectangle stays within the world boundaries. Camera smoothing and offset are disabled to avoid showing exterior space near a wall.
-- Chaos boon selection accepts **D-pad up/down**, **left stick up/down** (re-centre between steps), and **A/Cross confirm**. Current selection receives native Godot button focus. Keyboard and mouse remain supported.
-- The health bars, character pixel art and world geometry retain their own scale; zoom simply shows a larger area.
+Balance eight-enemy crowds, render effects with approved pixel assets, tune fire contagion, navigation around rocks, and add audio.

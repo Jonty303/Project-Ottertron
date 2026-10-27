@@ -1,7 +1,9 @@
 extends Area2D
-## Doughnut crits roll at impact: a 1% chance of dealing double damage.
+## Pierces multiple distinct living Colins, but never rocks or intact bushes.
+## Explosive front shots are intentionally NOT piercing.
 
 signal damage_dealt(at: Vector2, amount: int, critical: bool)
+signal splash_requested(at: Vector2, direct_victim: Node2D, damage: int)
 
 const LIFETIME: float = 1.55
 const BASE_COLLISION_RADIUS: float = 10.0
@@ -12,8 +14,11 @@ const BASE_COLLISION_RADIUS: float = 10.0
 @export_range(0.0, 1.0, 0.001) var critical_chance: float = 0.01
 
 var direction: Vector2 = Vector2.RIGHT
+var piercing: bool = false
+var exploding_front: bool = false
 var _remaining: float = LIFETIME
 var _consumed: bool = false
+var _already_hit: Array[Node2D] = []
 
 func _ready() -> void:
     add_to_group("projectiles")
@@ -30,13 +35,24 @@ func _physics_process(delta: float) -> void:
         queue_free()
 
 func _on_body_entered(body: Node2D) -> void:
-    if _consumed:
+    if _consumed or _already_hit.has(body):
         return
-    _consumed = true
     if body.is_in_group("enemies") and body.has_method("take_damage"):
+        _already_hit.append(body)
         var critical: bool = randf() < clampf(critical_chance, 0.0, 1.0)
         var attempted_damage: int = maxi(1, damage) * (2 if critical else 1)
         var applied: int = int(body.call("take_damage", attempted_damage))
         if applied > 0:
             damage_dealt.emit(body.global_position, applied, critical)
+        if exploding_front:
+            splash_requested.emit(global_position, body, maxi(1, ceili(float(damage) * 0.40)))
+        if piercing and not exploding_front:
+            return
+    elif body.is_in_group("obstacles") and body.has_method("take_projectile_hit"):
+        body.take_projectile_hit()
+        if exploding_front:
+            splash_requested.emit(global_position, null, maxi(1, ceili(float(damage) * 0.40)))
+    elif exploding_front:
+        splash_requested.emit(global_position, null, maxi(1, ceili(float(damage) * 0.40)))
+    _consumed = true
     queue_free()

@@ -40,11 +40,12 @@ func _run() -> void:
             check(not enemy._uses_aura and enemy._shoots_pencils, "Blue uses pencils, no aura")
             check(enemy.get_node("Art").jumper_color == Color("#377dc8"), "Blue jumper")
             check(is_equal_approx(enemy.pencil_interval, 1.0), "Blue fires every second")
-    check(counts["normal"] == 3 and counts["explosive"] == 1 and counts["ranged"] == 1,
-        "Each regular wave contains 3 yellow, 1 red, 1 blue")
+    check(counts["normal"] == 5 and counts["explosive"] == 2 and counts["ranged"] == 1,
+        "Each regular wave contains 5 yellow, 2 red, 1 blue")
 
     # The ranged enemy backs away when the player is too close.
     blue.set_physics_process(false)
+    blue._process(0.71)
     blue.position = game.player.position + Vector2(100, 0)
     blue._physics_process(0.1)
     check(blue.velocity.x > 0.0, "Blue retreats when otter approaches")

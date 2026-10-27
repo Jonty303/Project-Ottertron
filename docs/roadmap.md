@@ -1,34 +1,16 @@
 # Roadmap
 
-## v0.7 — arena hazards and Chaos boons
+## v0.9 — expanded waves and systemic upgrades
 
-- [x] Expand square arena to 1792px, camera boundaries
-- [x] Rocks, plants and collision-blocked enemy/projectile paths
-- [x] Pop-up 2-HP spike traps that cooldown
-- [x] Fire pits with animated 1 HP × 5 second burn
-- [x] Burn death cause and otter flame animation
-- [x] Green healing pickup, healing cap, 20% chance to drop on Colin death if wounded
-- [x] Choice of paired bad/good global modifiers after waves 2,4,6,8
-- [x] Boon pausing and permanent stacked multipliers
-- [x] Extra enemies carried into later waves and boss wave; victory tied to tenth-round clear
-- [x] Add headless hazards/healing/boon integration tests
-- [ ] Confirm collisions, animations, UI navigation and gameplay feel with physical controller
-
-## Future
-
-- [ ] Adapt spawn position navigation around rock/plant obstacles
-- [ ] More terrain variants and environmental art
-- [ ] More creative/random boon combinations and scaling
-- [ ] Dedicated polished directional pixel sprites and richer sound
-
-
-## v0.8 — gamepad menu and camera
-
-- [x] Explicit D-pad and left-stick Chaos boon navigation
-- [x] Explicit A/Cross selection of the highlighted boon
-- [x] Keyboard and mouse fallbacks
-- [x] Increase viewport from 1152×720 to 1280×800
-- [x] Zoom out to 0.85× for larger visible arena coverage
-- [x] Disable smoothing and constrain camera view to arena boundaries
-- [x] Add automated joypad input and camera-corner tests
-- [ ] Controller playtest with physical gamepads and display aspect ratios
+- [x] Eight enemies per wave; boss and seven minions in tenth wave
+- [x] Teleport arrival effects on all enemies
+- [x] Permanent bones on defeated enemies
+- [x] Randomly offer three boons from seven
+- [x] ±45° doughnut shots, lane duplication, multi-target piercing, front-shot splash
+- [x] Piercing excluded from front shot when front blast is active
+- [x] Bushes shake when shot, collapse after three hits, leave permanent leaf litter
+- [x] Low-profile spike holes, trigger on player or Colin, retract on stepping off
+- [x] Fire burns both sides, spreads on physical contact; burning Colins avoid each other
+- [x] Automated regression coverage added
+- [ ] Test larger crowds and effects with real controller
+- [ ] Improve enemy obstacle navigation and polished pixel-art effects

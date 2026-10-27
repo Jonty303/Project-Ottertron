@@ -19,7 +19,7 @@ func _run() -> void:
     await process_frame
 
     check(game.wave == 1, "Starts on wave 1")
-    check(game.enemies.size() == 5, "Starts with five Colins")
+    check(game.enemies.size() == 8, "Starts with eight Colins")
     check(game.kills == 0, "Starts at zero kills")
     check(game.player.health == 12, "Otter starts at twelve health")
     check(game.enemies[0].max_health == 10, "Colin begins with ten HP")
@@ -30,7 +30,7 @@ func _run() -> void:
             check(is_equal_approx(enemy.explosion_chance, 1.0), "Red Colin always explodes")
         else:
             check(is_equal_approx(enemy.explosion_chance, 0.0), "Yellow and blue Colins never explode")
-    check(red_count == 1, "Exactly one red Colin in each regular wave")
+    check(red_count == 2, "Two red Colins per regular wave")
     check(game.enemies[0].explosion_damage_min == 1 and game.enemies[0].explosion_damage_max == 10,
         "Explosion damage ranges from one to ten")
     check(is_equal_approx(game.player.doughnut_critical_chance, 0.01),
@@ -48,7 +48,7 @@ func _run() -> void:
     first_enemy.explosion_chance = 0.0
     first_enemy.take_damage(10)
     check(game.kills == 1, "One Colin death counts as one kill")
-    check(game.enemies.size() == 4, "Enemy tracking removes the fallen Colin")
+    check(game.enemies.size() == 7, "Enemy tracking removes the fallen Colin")
     check(game._wave_timer < 0.0, "Wave doesn't advance with enemies still alive")
 
     var powerup_values := {"damage": 1.0, "speed": 70.0, "size": 0.18}
@@ -84,14 +84,14 @@ func _run() -> void:
         else:
             check(bosses.is_empty(), "Only wave 10 has a boss")
         var enemies_this_wave = game.enemies.duplicate()
-        var desired_count: int = 4 if expected_wave == 1 else 5
+        var desired_count: int = 7 if expected_wave == 1 else 8
         check(enemies_this_wave.size() == desired_count,
             "Wave %d contains the expected remaining Colins" % expected_wave)
         for enemy in enemies_this_wave:
             enemy.explosion_chance = 0.0
             enemy.take_damage(enemy.max_health)
         check(game.enemies.is_empty(), "All enemies cleared from wave %d" % expected_wave)
-        check(game.kills == expected_wave * 5, "Cumulative kills after wave %d" % expected_wave)
+        check(game.kills == expected_wave * 8, "Cumulative kills after wave %d" % expected_wave)
         if expected_wave < 10:
             if expected_wave % 2 == 0:
                 check(game._boon_open, "Chaos boon offered after even wave %d" % expected_wave)
@@ -102,10 +102,10 @@ func _run() -> void:
             game._wave_timer = 0.001
             await process_frame
             await process_frame
-            check(game.enemies.size() == 5, "Five enemies spawn when extra-enemy boon not selected")
+            check(game.enemies.size() == 8, "Eight enemies spawn when extra-enemy boon not selected")
         else:
-            check(game._round_finished and game._win, "50 kills ends the game in victory")
-            check(game.kills == 50, "Victory occurs on exactly 50 kills")
+            check(game._round_finished and game._win, "Ten waves cleared ends the game in victory")
+            check(game.kills == 80, "Base ten-wave run has 80 kills")
             check(game._wave_timer <= 0.0, "No wave is scheduled after victory")
     game.queue_free()
     await process_frame
@@ -250,5 +250,5 @@ func _run() -> void:
     await process_frame
 
     if failures == 0:
-        print("OTTERTRON TEST PASSED: 50 kills, defeat, upgrades, 1% critical setup, delayed blasts and chain reactions")
+        print("OTTERTRON TEST PASSED: 80 base kills, defeat, upgrades, 1% critical setup, delayed blasts and chain reactions")
     quit(0 if failures == 0 else 1)

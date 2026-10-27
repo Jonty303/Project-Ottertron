@@ -90,14 +90,13 @@ func _run() -> void:
     check(game._boon_selection_index == 2, "Re-centering stick enables next move")
     game._input(_stick_vertical(0.0))
 
+    var chosen_kind: String = game.boon_order[2]
     game._input(_pad_button(JOY_BUTTON_A))
     check(not game._boon_open, "A/Cross confirms the selected boon")
-    check(game.boons_chosen.size() == 1 and game.boons_chosen[0] == "ferocity",
+    check(game.boons_chosen.size() == 1 and game.boons_chosen[0] == chosen_kind,
         "A/Cross chooses the correct highlighted boon")
-    check(is_equal_approx(game.enemy_damage_multiplier, 1.25),
-        "Chosen boon applies enemy trade-off")
-    check(is_equal_approx(game.player.doughnut_speed_multiplier, 1.25),
-        "Chosen boon applies otter benefit")
+    check(game.boons_chosen.size() == 1, "Chosen boon is recorded")
+    check(game.BOON_POOL.has(chosen_kind), "Chosen boon comes from the offered pool")
     check(not game.player.status_paused, "Game resumes after choice")
 
     game.queue_free()

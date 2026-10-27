@@ -29,6 +29,10 @@ var _fire_cooldown: float = 0.0
 var burn_ticks_left: int = 0
 var _burn_elapsed: float = 0.0
 var status_paused: bool = false
+var boon_angled: bool = false
+var boon_extra_shot: bool = false
+var boon_piercing: bool = false
+var boon_front_explosion: bool = false
 
 @onready var art = $Art
 @onready var health_bar = $HealthBar
@@ -126,6 +130,10 @@ func begin_death_animation() -> void:
     collapse.tween_property(art, "rotation", 1.40, 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
     collapse.tween_property(art, "scale", Vector2(1.12, 0.62), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
     collapse.tween_property(art, "position", Vector2(0, 17), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func receive_contagious_burn() -> void:
+    if burn_ticks_left <= 0:
+        apply_burn(5)
 
 func apply_burn(ticks: int = 5) -> void:
     if health <= 0:

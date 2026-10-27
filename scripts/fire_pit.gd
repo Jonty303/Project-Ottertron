@@ -5,7 +5,7 @@ var _phase: float = 0.0
 
 func _ready() -> void:
     collision_layer = 0
-    collision_mask = 1
+    collision_mask = 3
     add_to_group("hazards")
     var area_shape := CircleShape2D.new()
     area_shape.radius = 30.0
@@ -15,7 +15,7 @@ func _ready() -> void:
     body_entered.connect(_on_body_entered)
 
 func _on_body_entered(body: Node2D) -> void:
-    if body.is_in_group("player") and body.has_method("apply_burn"):
+    if (body.is_in_group("player") or body.is_in_group("enemies")) and body.has_method("apply_burn"):
         body.apply_burn(5)
 
 func _process(delta: float) -> void:
