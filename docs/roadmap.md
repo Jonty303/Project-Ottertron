@@ -20,3 +20,15 @@
 - [ ] More terrain variants and environmental art
 - [ ] More creative/random boon combinations and scaling
 - [ ] Dedicated polished directional pixel sprites and richer sound
+
+
+## v0.8 — gamepad menu and camera
+
+- [x] Explicit D-pad and left-stick Chaos boon navigation
+- [x] Explicit A/Cross selection of the highlighted boon
+- [x] Keyboard and mouse fallbacks
+- [x] Increase viewport from 1152×720 to 1280×800
+- [x] Zoom out to 0.85× for larger visible arena coverage
+- [x] Disable smoothing and constrain camera view to arena boundaries
+- [x] Add automated joypad input and camera-corner tests
+- [ ] Controller playtest with physical gamepads and display aspect ratios

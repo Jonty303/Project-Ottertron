@@ -49,3 +49,13 @@ There are **50 base enemies across ten waves**, but extra-enemy boons can increa
 See [game design](docs/game-design.md), [roadmap](docs/roadmap.md) and [test plan](docs/test-plan.md). GitHub Actions runs headless Godot 4.5.2 import, smoke, wave, enemy variant and environment/boon regression tests.
 
 **Art status:** existing Colins and otter use procedural placeholders; approved 64×64 sprites are still the intended final assets.
+
+
+## Controller-driven Chaos boons and wider camera (v0.8)
+
+- **Boon controller controls:** D-pad **up/down** or **left stick up/down** to highlight a boon; **A / Cross** to confirm. The left stick uses a re-centre threshold so holding it does not skip multiple boons. Keyboard arrows/WASD plus Enter/Space and mouse buttons also work.
+- **Viewport:** **1280×800 (16:10)**, up from 1152×720.
+- **Camera:** **0.85× zoom**, showing about **1506×941 world pixels**, instead of 1152×720. Godot camera limits stay enabled, smoothing and offset are disabled, and the camera clamps at all four arena edges so no outside area is shown.
+- The HUD, bottom hints, boon panel and results dialogue are laid out for the wider viewport. The arena itself remains **1792×1792**.
+
+Automated camera/controller coverage: `tests/camera_controller_smoke.gd` checks joystick choice behaviour and that the actual visible world rectangle stays within room limits at each corner.

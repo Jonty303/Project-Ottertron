@@ -33,3 +33,11 @@ Yellow 10 HP, red 10 HP always explodes after 0.9s, blue 10 HP fires snapping fr
 ## Art and roadmap
 
 Characters remain procedural placeholders pending approved static 64×64 direction sprites. Terrain, flame, spike and pickup visual effects are also temporary procedural art.
+
+
+## v0.8 — view and controls
+
+- Widescreen gameplay viewport: **1280×800**. The arena remains **1792×1792 world pixels**.
+- Camera zoom is **0.85×**, giving approximately **1506×941 world pixels** of coverage; view centre is constrained so the visible rectangle stays within the world boundaries. Camera smoothing and offset are disabled to avoid showing exterior space near a wall.
+- Chaos boon selection accepts **D-pad up/down**, **left stick up/down** (re-centre between steps), and **A/Cross confirm**. Current selection receives native Godot button focus. Keyboard and mouse remain supported.
+- The health bars, character pixel art and world geometry retain their own scale; zoom simply shows a larger area.

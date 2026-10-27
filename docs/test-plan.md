@@ -13,3 +13,15 @@
 11. Confirm game-over tombstone/cause/time, controller restart, critical hits, boss and pencil behaviour survive this update.
 
 CI runs `tests/environment_boons_smoke.gd` plus prior smoke tests under Godot 4.5.2.
+
+
+## Camera and controller acceptance (v0.8)
+
+1. With the game at 1280×800, verify more arena features are visible at once than at 1152×720 / 1.0× zoom.
+2. Walk into all four arena corners and along the walls. The camera must never expose the world beyond the perimeter wall, including near corners.
+3. Clear wave 2 using a controller. The first boon is highlighted. D-pad up/down and left-stick up/down cycle focus, looping at either end. Holding the stick steady must not scroll repeatedly.
+4. Press the **A/Cross** button to activate the **currently highlighted** boon, rather than always selecting the first. Verify the trade-off is applied and the game resumes.
+5. Verify mouse selection and keyboard arrows/WASD + Enter/Space continue working.
+6. Check boon and game-over dialogues, HUD and bottom control hint fit comfortably inside 1280×800.
+
+Automated regression `tests/camera_controller_smoke.gd` simulates joypad events and verifies actual camera screen bounds at all four arena corners.

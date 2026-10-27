@@ -29,6 +29,11 @@ var player
 var hud: Label
 var _boon_overlay: ColorRect
 var _boon_open: bool = false
+var _boon_buttons: Array[Button] = []
+var _boon_selection_index: int = 0
+var _boon_stick_latched: bool = false
+const BOON_ORDER: Array[String] = ["swarm", "fortitude", "ferocity"]
+const CAMERA_ZOOM: float = 0.85
 var boons_chosen: Array[String] = []
 var enemy_spawn_multiplier: float = 1.0
 var enemy_health_multiplier: float = 1.0
@@ -68,9 +73,13 @@ func _ready() -> void:
     _place_environment()
 
     var camera := Camera2D.new()
-    camera.zoom = Vector2.ONE
-    camera.position_smoothing_enabled = true
-    camera.position_smoothing_speed = 5.0
+    camera.zoom = Vector2.ONE * CAMERA_ZOOM
+    # Hard viewport limits: prevent camera smoothing/offset from exposing
+    # the unrendered world outside the room on any edge or corner.
+    camera.position_smoothing_enabled = false
+    camera.limit_enabled = true
+    camera.limit_smoothed = false
+    camera.offset = Vector2.ZERO
     camera.limit_left = -int(ROOM_SIDE * 0.5) + int(WALL_THICKNESS)
     camera.limit_right = int(ROOM_SIDE * 0.5) - int(WALL_THICKNESS)
     camera.limit_top = -int(ROOM_SIDE * 0.5) + int(WALL_THICKNESS)
@@ -89,7 +98,7 @@ func _ready() -> void:
 
     var instructions := Label.new()
     instructions.text = "MOVE: left stick / WASD      FIRE: right stick / arrows      UPGRADES: D damage, S speed, + size"
-    instructions.position = Vector2(24, 678)
+    instructions.position = Vector2(24, 758)
     instructions.add_theme_font_size_override("font_size", 15)
     interface.add_child(instructions)
     _create_game_over_dialog(interface)
@@ -505,6 +514,58 @@ func _format_survival(seconds: float) -> String:
     return "%02d:%02d" % [total / 60, total % 60]
 
 
+
+func _input(event: InputEvent) -> void:
+    if not _boon_open:
+        return
+    # Consume controller UI input before the regular GUI and twin-stick controls.
+    if event is InputEventJoypadButton and event.pressed:
+        match event.button_index:
+            JOY_BUTTON_DPAD_UP:
+                _move_boon_selection(-1)
+            JOY_BUTTON_DPAD_DOWN:
+                _move_boon_selection(1)
+            JOY_BUTTON_A:
+                _confirm_boon_selection()
+            _:
+                return
+        get_viewport().set_input_as_handled()
+    elif event is InputEventJoypadMotion and event.axis == JOY_AXIS_LEFT_Y:
+        var strength: float = event.axis_value
+        if absf(strength) < 0.35:
+            _boon_stick_latched = false
+        elif absf(strength) > 0.65 and not _boon_stick_latched:
+            _boon_stick_latched = true
+            _move_boon_selection(1 if strength > 0.0 else -1)
+            get_viewport().set_input_as_handled()
+    elif event is InputEventKey and event.pressed and not event.echo:
+        match event.keycode:
+            KEY_UP, KEY_W:
+                _move_boon_selection(-1)
+            KEY_DOWN, KEY_S:
+                _move_boon_selection(1)
+            KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+                _confirm_boon_selection()
+            _:
+                return
+        get_viewport().set_input_as_handled()
+
+func _move_boon_selection(direction: int) -> void:
+    if not _boon_open or _boon_buttons.is_empty():
+        return
+    _boon_selection_index = posmod(_boon_selection_index + direction, _boon_buttons.size())
+    _focus_boon_selection()
+
+func _focus_boon_selection() -> void:
+    if _boon_buttons.is_empty():
+        return
+    _boon_buttons[_boon_selection_index].grab_focus()
+
+func _confirm_boon_selection() -> void:
+    if not _boon_open or _boon_selection_index < 0 or _boon_selection_index >= BOON_ORDER.size():
+        return
+    _choose_boon(BOON_ORDER[_boon_selection_index])
+
 func _create_boon_dialog(layer: CanvasLayer) -> void:
     _boon_overlay = ColorRect.new()
     _boon_overlay.color = Color(0.045, 0.035, 0.085, 0.87)
@@ -514,7 +575,7 @@ func _create_boon_dialog(layer: CanvasLayer) -> void:
     _boon_overlay.hide()
 
     var panel := PanelContainer.new()
-    panel.position = Vector2(205, 127)
+    panel.position = (get_viewport().get_visible_rect().size - Vector2(742, 466)) / 2.0
     panel.custom_minimum_size = Vector2(742, 466)
     panel.size = Vector2(742, 466)
     var style := StyleBoxFlat.new()
@@ -541,12 +602,19 @@ func _create_boon_dialog(layer: CanvasLayer) -> void:
     subtitle.add_theme_font_size_override("font_size", 17)
     content.add_child(subtitle)
 
+    var controls := Label.new()
+    controls.text = "D-pad / left stick: choose       A / Cross: confirm"
+    controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    controls.add_theme_font_size_override("font_size", 16)
+    controls.add_theme_color_override("font_color", Color("#d7c0ed"))
+    content.add_child(controls)
+
     var choices := [
         ["swarm", "+25% enemies next waves    /    +25% player doughnut damage"],
         ["fortitude", "+30% enemy health    /    +20% otter movement speed"],
         ["ferocity", "+25% enemy damage    /    +25% doughnut flight speed"]
     ]
-    var first_button: Button
+    _boon_buttons.clear()
     for entry in choices:
         var button := Button.new()
         button.text = entry[1]
@@ -554,9 +622,8 @@ func _create_boon_dialog(layer: CanvasLayer) -> void:
         button.add_theme_font_size_override("font_size", 17)
         button.pressed.connect(_choose_boon.bind(entry[0]))
         content.add_child(button)
-        if first_button == null:
-            first_button = button
-    _boon_overlay.set_meta("first_button", first_button)
+        button.focus_mode = Control.FOCUS_ALL
+        _boon_buttons.append(button)
 
 func _offer_boon() -> void:
     if _round_finished or _boon_open:
@@ -566,9 +633,10 @@ func _offer_boon() -> void:
     player.status_paused = true
     for projectile in get_tree().get_nodes_in_group("projectiles"):
         projectile.queue_free()
+    _boon_selection_index = 0
+    _boon_stick_latched = false
     _boon_overlay.show()
-    var focus_button = _boon_overlay.get_meta("first_button")
-    focus_button.grab_focus.call_deferred()
+    _focus_boon_selection()
     _update_hud()
 
 func _choose_boon(kind: String) -> void:
@@ -589,6 +657,9 @@ func _choose_boon(kind: String) -> void:
     boons_chosen.append(kind)
     _boon_open = false
     _boon_overlay.hide()
+    _boon_stick_latched = false
+    if _boon_buttons.size() > 0:
+        _boon_buttons[_boon_selection_index].release_focus()
     player.status_paused = false
     _wave_timer = WAVE_DELAY
     _update_hud()
@@ -602,7 +673,7 @@ func _create_game_over_dialog(layer: CanvasLayer) -> void:
     _game_over_overlay.hide()
 
     var panel := PanelContainer.new()
-    panel.position = Vector2(296, 194)
+    panel.position = (get_viewport().get_visible_rect().size - Vector2(560, 290)) / 2.0
     panel.custom_minimum_size = Vector2(560, 290)
     panel.size = Vector2(560, 290)
     var box_style := StyleBoxFlat.new()
