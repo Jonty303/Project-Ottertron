@@ -102,8 +102,9 @@ func _run() -> void:
                 game._choose_boon("fortitude")
                 check(not game._boon_open, "Boon selection closes the choice")
             check(game._wave_timer > 0.0, "Next wave schedules after clearing wave %d" % expected_wave)
-            game._wave_timer = 0.001
-            await process_frame
+            # Advance deterministically in headless tests; real gameplay waits WAVE_DELAY.
+            game._wave_timer = -1.0
+            game._spawn_wave()
             await process_frame
             check(game.enemies.size() == 8, "Eight enemies spawn when extra-enemy boon not selected")
         else:

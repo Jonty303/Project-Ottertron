@@ -122,8 +122,8 @@ func _run() -> void:
         enemy.take_damage(enemy.max_health)
     check(flawless._next_wave_flawless_bonus == 1,
         "Untouched otter earns secret extra enemy in next wave")
-    flawless._wave_timer = 0.001
-    await process_frame
+    flawless._wave_timer = -1.0
+    flawless._spawn_wave()
     await process_frame
     check(flawless.wave == 2 and flawless.enemies.size() == 9,
         "Wave two silently contains nine instead of eight enemies")

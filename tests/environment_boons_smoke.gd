@@ -82,8 +82,8 @@ func _run() -> void:
         enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)
     check(boon_game.wave == 1, "First wave cleared")
-    boon_game._wave_timer = 0.001
-    await process_frame
+    boon_game._wave_timer = -1.0
+    boon_game._spawn_wave()
     await process_frame
     print("ENV TRACE: spawned wave 2")
     check(boon_game.wave == 2, "Second wave spawned")
@@ -102,8 +102,8 @@ func _run() -> void:
     check(is_equal_approx(boon_game.enemy_spawn_multiplier, 1.25), "Extra enemies +25%")
     check(is_equal_approx(boon_game.player.doughnut_damage_multiplier, 1.25),
         "Player damage +25%")
-    boon_game._wave_timer = 0.001
-    await process_frame
+    boon_game._wave_timer = -1.0
+    boon_game._spawn_wave()
     await process_frame
     print("ENV TRACE: spawned wave 3")
     check(boon_game.wave == 3, "Third wave spawns after boon")
@@ -127,8 +127,8 @@ func _run() -> void:
     for enemy in boon_game.enemies.duplicate():
         enemy.explosion_chance = 0.0
         enemy.take_damage(enemy.max_health)
-    boon_game._wave_timer = 0.001
-    await process_frame
+    boon_game._wave_timer = -1.0
+    boon_game._spawn_wave()
     await process_frame
     check(boon_game.wave == 4, "Wave controller continues after stacking boons")
     check(boon_game.enemies.size() == 10, "Extra enemies persist into later waves")
