@@ -644,8 +644,18 @@ func _start_tombstone_drop() -> void:
     _tombstone.landed.connect(_on_tombstone_landed, CONNECT_ONE_SHOT)
     _tombstone.drop_to(grave_point)
 
+func _run_history() -> Node:
+    var history: Node = get_tree().root.get_node_or_null("RunHistory")
+    if history == null:
+        # Godot's standalone --script test mode may omit project autoloads.
+        # Keep the same history node in the SceneTree root between reloads.
+        history = preload("res://scripts/run_history.gd").new()
+        history.name = "RunHistory"
+        get_tree().root.add_child(history)
+    return history
+
 func _restore_tombstones() -> void:
-    for location in RunHistory.tombstones:
+    for location in _run_history().tombstones:
         var stone = TOMBSTONE.new()
         stone.landing_point = location
         stone.position = location
@@ -654,7 +664,7 @@ func _restore_tombstones() -> void:
 
 func _on_tombstone_landed() -> void:
     if is_instance_valid(_tombstone):
-        RunHistory.add_tombstone(_tombstone.landing_point)
+        _run_history().add_tombstone(_tombstone.landing_point)
     _show_game_over_dialog()
 
 func _format_survival(seconds: float) -> String:
