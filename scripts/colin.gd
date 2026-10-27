@@ -23,7 +23,7 @@ signal pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D)
 @export var pencil_range: float = 680.0
 @export var ranged_preferred_distance: float = 270.0
 @export var ranged_minimum_distance: float = 190.0
-@export var explosion_delay: float = 2.0
+@export var explosion_delay: float = 0.9
 @export var explosion_radius: float = 128.0
 @export var explosion_damage_min: int = 1
 @export var explosion_damage_max: int = 10
@@ -94,7 +94,7 @@ func _process(delta: float) -> void:
     if pending_explosion:
         _explosion_remaining -= delta
         _glow_time += delta
-        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 14.0)
+        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 23.0)
         art.modulate = Color(1.0, 0.08 + pulse * 0.23, 0.08 + pulse * 0.23)
         queue_redraw()
         if _explosion_remaining <= 0.0:
@@ -137,7 +137,7 @@ func _physics_process(delta: float) -> void:
                 var increase: int = int(floor(float(_ticks_completed) / float(ramp_every)))
                 var damage: int = mini(drain_max_damage, drain_base_damage + increase)
                 _ticks_completed += 1
-                var applied: int = target.take_damage(damage)
+                var applied: int = target.take_damage(damage, _drain_damage_source())
                 if applied > 0:
                     aura_tick.emit(applied)
                 if target.health <= 0:
@@ -213,10 +213,10 @@ func _die() -> void:
 
 func _draw() -> void:
     if pending_explosion:
-        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 14.0)
-        var glow_color := Color(1.0, 0.07, 0.05, 0.18 + pulse * 0.23)
-        draw_circle(Vector2.ZERO, 39.0 + pulse * 8.0, glow_color)
-        draw_arc(Vector2.ZERO, 37.0 + pulse * 5.0, 0.0, TAU, 64, Color(1.0, 0.2, 0.12, 0.72), 3.0, true)
+        var pulse: float = 0.5 + 0.5 * sin(_glow_time * 23.0)
+        var glow_color := Color(1.0, 0.04, 0.03, 0.20 + pulse * 0.38)
+        draw_circle(Vector2.ZERO, 39.0 + pulse * 15.0, glow_color)
+        draw_arc(Vector2.ZERO, 39.0 + pulse * 10.0, 0.0, TAU, 64, Color(1.0, 0.14, 0.08, 0.85), 4.0, true)
         return
     if not aura_active:
         return
@@ -237,3 +237,12 @@ func _draw() -> void:
             var wobble: float = sin(t * 19.0 + _aura_phase * 10.0) * 6.0 * sin(PI * t)
             beam.append(destination * t + perp * wobble)
         draw_polyline(beam, Color(0.71, 0.55, 1.0, 0.68), 3.0, true)
+
+func _drain_damage_source() -> String:
+    match variant:
+        "boss":
+            return "Boss Colin's life-drain aura"
+        "explosive":
+            return "Red Colin's life-drain aura"
+        _:
+            return "Colin's life-drain aura"

@@ -20,6 +20,8 @@ const FIRE_INTERVAL: float = 0.20
 @export var maximum_doughnut_size: float = 2.0
 
 var health: int = 12
+var last_damage_source: String = "Unknown cause"
+var death_animation_started: bool = false
 var _fire_cooldown: float = 0.0
 
 @onready var art = $Art
@@ -75,15 +77,17 @@ func _stick(horizontal_axis: JoyAxis, vertical_axis: JoyAxis) -> Vector2:
         Input.get_joy_axis(device, vertical_axis)
     ).limit_length(1.0)
 
-func take_damage(amount: int) -> int:
+func take_damage(amount: int, source: String = "Unknown cause") -> int:
     if health <= 0 or amount <= 0:
         return 0
     var applied: int = mini(amount, health)
     health -= applied
+    last_damage_source = source
     health_bar.set_health(health, max_health)
     damage_taken.emit(applied)
     health_changed.emit(health)
     if health <= 0:
+        begin_death_animation()
         defeated.emit()
     return applied
 
@@ -98,3 +102,17 @@ func apply_doughnut_upgrade(kind: String, amount: float) -> void:
         _:
             return
     doughnut_stats_changed.emit(doughnut_damage, doughnut_speed, doughnut_size)
+
+func begin_death_animation() -> void:
+    if death_animation_started:
+        return
+    death_animation_started = true
+    health_bar.hide()
+    art.set_facing(Vector2.DOWN)
+    art.is_dead = true
+    art.queue_redraw()
+    # Tilt and squash the otter into a sprawled position.
+    var collapse := create_tween().set_parallel(true)
+    collapse.tween_property(art, "rotation", 1.40, 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    collapse.tween_property(art, "scale", Vector2(1.12, 0.62), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+    collapse.tween_property(art, "position", Vector2(0, 17), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)

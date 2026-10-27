@@ -8,7 +8,8 @@ const PENCIL_SCENE: PackedScene = preload("res://scenes/pencil.tscn")
 const PENCIL_SNAP = preload("res://scripts/pencil_snap.gd")
 const POWER_UP_SCENE: PackedScene = preload("res://scenes/power_up.tscn")
 const FLOATING_TEXT = preload("res://scripts/floating_text.gd")
-const EXPLOSION_FLASH = preload("res://scripts/explosion_flash.gd")
+const MUSHROOM_CLOUD = preload("res://scripts/mushroom_cloud.gd")
+const TOMBSTONE = preload("res://scripts/tombstone.gd")
 
 const ROOM_SIDE: float = 960.0
 const WALL_THICKNESS: float = 28.0
@@ -21,6 +22,14 @@ const ENEMY_SPAWN_SEPARATION: float = 90.0
 
 var player
 var hud: Label
+var _game_over_overlay: ColorRect
+var _game_over_title: Label
+var _game_over_details: Label
+var _tombstone: Node2D
+var _elapsed_survival: float = 0.0
+var _survival_at_end: float = 0.0
+var _death_sequence_remaining: float = -1.0
+var _death_cause: String = ""
 var enemies: Array[Node2D] = []
 var pending_bombs: Array[Node2D] = []
 var kills: int = 0
@@ -67,6 +76,7 @@ func _ready() -> void:
     instructions.position = Vector2(24, 678)
     instructions.add_theme_font_size_override("font_size", 15)
     interface.add_child(instructions)
+    _create_game_over_dialog(interface)
 
     # Make all three power-up types available immediately for testing.
     _spawn_powerup("damage", Vector2(-105, -125))
@@ -85,9 +95,14 @@ func _draw() -> void:
 
 func _process(delta: float) -> void:
     if _round_finished:
-        if Input.is_key_pressed(KEY_R) or _restart_button_pressed():
+        if _death_sequence_remaining >= 0.0:
+            _death_sequence_remaining -= delta
+            if _death_sequence_remaining < 0.0:
+                _start_tombstone_drop()
+        elif _game_over_overlay.visible and (Input.is_key_pressed(KEY_R) or _restart_button_pressed()):
             get_tree().reload_current_scene()
         return
+    _elapsed_survival += delta
     if _wave_timer > 0.0:
         _wave_timer -= delta
         if _wave_timer <= 0.0:
@@ -192,17 +207,18 @@ func _on_enemy_defeated(enemy: Node2D) -> void:
     kills += 1
     if enemy.pending_explosion:
         pending_bombs.append(enemy)
-        _floating_text(enemy.global_position + Vector2(0, -66),
-            "WARNING: EXPLOSION!", Color("#ff6153"))
-    if kills >= TARGET_KILLS:
-        _end_round(true)
     else:
-        _maybe_clear_wave()
+        _spawn_mushroom_cloud(enemy.global_position, false, 0.0,
+            1.55 if enemy.variant == "boss" else 1.0)
+    _maybe_clear_wave()
     _update_hud()
 
 func _maybe_clear_wave() -> void:
     # Delayed explosions must resolve before another wave enters the room.
     if _round_finished or not enemies.is_empty() or not pending_bombs.is_empty():
+        return
+    if kills >= TARGET_KILLS:
+        _end_round(true)
         return
     if _wave_timer > 0.0:
         return
@@ -215,15 +231,11 @@ func _on_explosion_requested(at: Vector2, radius: float, damage: int, bomb: Node
     if not pending_bombs.has(bomb):
         return
     if not _round_finished:
-        var flash = EXPLOSION_FLASH.new()
-        flash.position = at
-        flash.radius = radius
-        add_child(flash)
-        _floating_text(at + Vector2(0, -55), "BOOM! %d" % damage, Color("#ff934b"))
+        _spawn_mushroom_cloud(at, true, radius)
         # A single random 1-10 HP value is rolled per explosion and applied
         # to each living target within 128px; the dead owner is excluded.
         if player.health > 0 and player.global_position.distance_to(at) <= radius:
-            player.take_damage(damage)
+            player.take_damage(damage, "Red Colin's explosion")
         if not _round_finished:
             for enemy in enemies.duplicate():
                 if _round_finished:
@@ -304,8 +316,7 @@ func _on_pencil_snapped(at: Vector2, heading: float) -> void:
     bits.position = at
     bits.heading = heading
     add_child(bits)
-    _floating_text(at + Vector2(0, -26), "SNAP!", Color("#ffe29b"))
-
+ 
 func _on_doughnut_damage(at: Vector2, amount: int, critical: bool) -> void:
     if critical:
         _floating_text(at + Vector2(0, -50), "CRIT! -%d" % amount, Color("#ffed75"))
@@ -348,6 +359,7 @@ func _on_aura_tick(_damage: int, _enemy: Node2D) -> void:
     _update_hud()
 
 func _on_player_defeated() -> void:
+    _death_cause = player.last_damage_source
     _end_round(false)
 
 func _end_round(victory: bool) -> void:
@@ -356,6 +368,7 @@ func _end_round(victory: bool) -> void:
     _round_finished = true
     _win = victory
     _wave_timer = -1.0
+    _survival_at_end = _elapsed_survival
     player.set_physics_process(false)
     for enemy in enemies:
         if is_instance_valid(enemy):
@@ -368,6 +381,92 @@ func _end_round(victory: bool) -> void:
     for projectile in get_tree().get_nodes_in_group("projectiles"):
         projectile.queue_free()
     _update_hud()
+    if victory:
+        _show_game_over_dialog()
+    else:
+        _death_sequence_remaining = 0.52
+
+
+func _spawn_mushroom_cloud(at: Vector2, deals_damage: bool, blast_radius: float,
+        effect_scale: float = 1.0) -> void:
+    var cloud = MUSHROOM_CLOUD.new()
+    cloud.position = at
+    cloud.hazardous = deals_damage
+    cloud.radius = blast_radius
+    cloud.scale_factor = effect_scale
+    add_child(cloud)
+
+func _start_tombstone_drop() -> void:
+    if is_instance_valid(_tombstone):
+        return
+    _tombstone = TOMBSTONE.new()
+    add_child(_tombstone)
+    var room_edge: float = ROOM_SIDE / 2.0 - 56.0
+    var grave_point: Vector2 = player.global_position + Vector2(74, 12)
+    grave_point.x = clampf(grave_point.x, -room_edge, room_edge)
+    grave_point.y = clampf(grave_point.y, -room_edge, room_edge)
+    _tombstone.landed.connect(_show_game_over_dialog, CONNECT_ONE_SHOT)
+    _tombstone.drop_to(grave_point)
+
+func _format_survival(seconds: float) -> String:
+    var total: int = maxi(0, int(floor(seconds)))
+    return "%02d:%02d" % [total / 60, total % 60]
+
+func _create_game_over_dialog(layer: CanvasLayer) -> void:
+    _game_over_overlay = ColorRect.new()
+    _game_over_overlay.color = Color(0.05, 0.07, 0.10, 0.69)
+    _game_over_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _game_over_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    layer.add_child(_game_over_overlay)
+    _game_over_overlay.hide()
+
+    var panel := PanelContainer.new()
+    panel.position = Vector2(296, 194)
+    panel.custom_minimum_size = Vector2(560, 290)
+    panel.size = Vector2(560, 290)
+    var box_style := StyleBoxFlat.new()
+    box_style.bg_color = Color("#24313c")
+    box_style.border_color = Color("#e2c18a")
+    box_style.set_border_width_all(3)
+    box_style.set_corner_radius_all(13)
+    box_style.set_content_margin_all(28)
+    panel.add_theme_stylebox_override("panel", box_style)
+    _game_over_overlay.add_child(panel)
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 18)
+    panel.add_child(content)
+
+    _game_over_title = Label.new()
+    _game_over_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _game_over_title.add_theme_font_size_override("font_size", 33)
+    _game_over_title.add_theme_color_override("font_color", Color("#f2d7ac"))
+    content.add_child(_game_over_title)
+
+    _game_over_details = Label.new()
+    _game_over_details.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _game_over_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    _game_over_details.add_theme_font_size_override("font_size", 19)
+    content.add_child(_game_over_details)
+
+    var restart := Button.new()
+    restart.text = "Try again     (A / R)"
+    restart.custom_minimum_size = Vector2(260, 48)
+    restart.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+    restart.pressed.connect(func() -> void: get_tree().reload_current_scene())
+    content.add_child(restart)
+
+func _show_game_over_dialog() -> void:
+    if not is_instance_valid(_game_over_overlay):
+        return
+    if _win:
+        _game_over_title.text = "VICTORY!"
+        _game_over_details.text = "All 50 Colins defeated!\nTime survived: %s\nWaves cleared: %d" % [
+            _format_survival(_survival_at_end), wave]
+    else:
+        _game_over_title.text = "GAME OVER"
+        _game_over_details.text = "Cause of death: %s\nTime survived: %s\nColins defeated: %d / %d" % [
+            _death_cause, _format_survival(_survival_at_end), kills, TARGET_KILLS]
+    _game_over_overlay.show()
 
 func _floating_text(at: Vector2, message: String, color: Color) -> void:
     var popup = FLOATING_TEXT.new()
@@ -384,8 +483,7 @@ func _update_hud() -> void:
         pending_bombs.size()
     ]
     if _round_finished:
-        hud.text = stats + ("\nVICTORY! 50 COLINS DEFEATED!" if _win else
-            "\nDEFEAT! THE OTTER WAS DEFEATED!") + "   |   R or A/Cross to restart"
+        hud.text = stats
     elif _wave_timer > 0.0:
         hud.text = stats + "\nWAVE CLEAR — NEXT WAVE INCOMING"
     else:

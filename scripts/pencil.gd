@@ -36,7 +36,12 @@ func _on_body_entered(body: Node2D) -> void:
         var low: int = maxi(1, mini(minimum_damage, maximum_damage))
         var high: int = maxi(low, maxi(minimum_damage, maximum_damage))
         var attempted: int = randi_range(low, high)
-        var applied: int = int(body.call("take_damage", attempted))
+        var applied: int = 0
+        if body.is_in_group("player"):
+            var source: String = "Boss Colin's pencil" if is_instance_valid(shooter) and shooter.variant == "boss" else "Blue Colin's pencil"
+            applied = int(body.call("take_damage", attempted, source))
+        else:
+            applied = int(body.call("take_damage", attempted))
         if applied > 0:
             damage_dealt.emit(body.global_position, applied, body.is_in_group("player"))
     snapped.emit(global_position)

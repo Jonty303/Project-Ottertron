@@ -1,49 +1,34 @@
 # Project Ottertron
 
-A cute top-down twin-stick shoot-'em-up built for **Godot 4.5.2-stable**. A cuddly otter fires glazed doughnuts at a growing office-worker menace.
+A cute top-down twin-stick shoot-'em-up for **Godot 4.5.2-stable**. A cuddly otter fires glazed doughnuts at several varieties of Colin.
 
-## Run
+## How to run
 
-1. Install [Godot 4.5.2-stable](https://godotengine.org/download/archive/4.5.2-stable/).
-2. Clone this private GitHub repository, import `project.godot`, and press **F5**.
+Install [Godot 4.5.2-stable](https://godotengine.org/download/archive/4.5.2-stable/), clone the repository, import `project.godot`, and press **F5**.
 
-| Action | Gamepad | Keyboard testing |
-| --- | --- | --- |
+| Control | Gamepad | Keyboard |
+|---|---|---|
 | Move | Left stick | WASD |
-| Shoot/aim | Right stick | Arrow keys |
-| Restart after game over | A / Cross | R |
+| Aim/fire | Right stick | Arrows |
+| Restart after results dialogue | A / Cross | R |
 
-## Enemy types
+## Enemies and waves
 
-| Enemy | Look | Health | Behaviour |
-| --- | --- | --- | --- |
-| **Colin** | Yellow jumper | 10 | Slowly approaches; wobbly escalating life-drain aura in close range; **never explodes** |
-| **Explosive Colin** | Red jumper | 10 | Approaches and life-drains; **always** glows red for 2 seconds upon death and then explodes |
-| **Pencil Colin** | Blue jumper | 10 | Keeps ~190–270px distance and fires **one pencil each second**; no death explosion |
-| **Boss Colin** | Large purple jumper; **2.2×** size | **40** | Slow (~33px/s); both life-drain and pencil attacks; no death explosion |
+Waves 1–9: **3 normal yellow Colins, 1 explosive red Colin, 1 ranged blue pencil Colin**. Wave 10: **2.2× boss Colin** with 40 HP, life drain and pencils, plus four random minions. **50 kills** wins; loss at zero otter HP.
 
-Every exploding red Colin damages the otter **and any other living Colin** within **128px**. The explosion rolls **1–10 damage** (one roll per blast); collateral kills count toward the 50-kill goal and red victims can chain-explode. The corpse is inert and non-colliding during the 2-second warning.
+- **All enemy deaths now display a brief mushroom-cloud animation.** Normal, blue and boss death clouds are cosmetic only.
+- **Red Colin** always explodes: an urgent red pulse lasts **0.9 seconds**, with **no text warning**, followed by a **small mushroom cloud and 128px blast ring** dealing a random 1–10 HP to the otter and nearby living Colins. A red killed in the blast can set up a chain reaction. Wave transitions wait for active red explosions; the final 50th kill also waits for any pending detonations before victory.
+- **Blue Colin** fires pencils that snap and briefly split into pieces when they hit an enemy, player, or wall. The literal `SNAP!` text has been removed. The damage from a pencil still shows floating numbers; pencils can hurt other Colins.
+- **Boss Colin** moves slowly and uses both life drain and pencils.
 
-Pencils fly toward the otter, can hit **other Colins** (but not the shooter), and deal **1–10 random damage** before snapping on contact with enemies, the otter, or walls. A small snap effect and floating text indicate the break.
+## Otter death and results
 
-## Survival rounds
+When the otter dies, movement stops, the otter gets **X eyes and collapses**. A **tombstone drops from above and lands beside the body**, followed by a **game-over dialogue** showing the precise damage source (life drain, pencil or red Colin explosion), the **elapsed time survived (mm:ss)**, and number of Colins defeated. Victory also gets a results dialogue with elapsed time.
 
-- **Rounds 1–9:** five enemies per round: **three yellow, one red, one blue**, shuffled each round.
-- **Round 10:** **one boss Colin and four random minions** (55% yellow / 25% red / 20% blue per minion).
-- **Victory at 50 enemy kills**, including the boss. Loss when the otter's 12 HP reaches zero.
-- A wave clears only when all five Colins have died and all pending red explosions have resolved, then the next wave begins after 1 second.
+The death source is recorded at the point damage is applied; no death cause is guessed from the nearest enemy.
 
-## Player weapon and upgrades
+## Weapon
 
-- Starting doughnuts: **1 damage, 315px/s, 0.78× size**.
-- Each hit has a **1% critical chance for double damage**.
-- Red D = +1 doughnut damage; cyan S = +70px/s; purple + = +0.18× projectile size (including hitbox). Pickups stack and can be collected during play.
+Starting doughnuts: **1 damage, 315px/s, 0.78× size**, with a **1% chance of a 2× critical hit**. Pickups independently improve damage (+1), speed (+70px/s) or size (+0.18×); the size stat also scales projectile collision.
 
-## Development
-
-- `scenes/`: reusable character, doughnut, pencil and power-up scenes.
-- `scripts/`: game loop, enemy types, ranged AI, projectiles, hit effects and health displays.
-- `tests/`: headless wave, power-up, explosion and enemy-type regressions.
-- `docs/`: [design](docs/game-design.md), [roadmap](docs/roadmap.md) and [test plan](docs/test-plan.md).
-
-**Art:** the current in-engine sprites remain procedural placeholders. The approved 64×64 concept art is the future replacement target; the boss's in-game size is intentionally 2.2×.
+See `docs/game-design.md`, `docs/test-plan.md` and the Godot 4.5.2 GitHub Actions workflow. In-game character art remains placeholder procedural art.

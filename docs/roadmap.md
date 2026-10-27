@@ -1,19 +1,21 @@
 # Roadmap
 
-## v0.5 — Colin enemy archetypes and boss
+## v0.6 — effects and game over
 
-- [x] Yellow Colin never explodes
-- [x] Red-jumper Colin always explodes 2 seconds after death
-- [x] Blue-jumper Colin stands off and fires snapping, friendly-fire pencils
-- [x] Three normal + one red + one blue for waves 1–9
-- [x] Round 10: 2.2× boss with 40 HP, slow movement, life drain and pencils; four random minions
-- [x] Preserve 50-kill victory and delayed explosions between waves
-- [x] Headless enemy-variant tests added
-- [ ] Confirm on-screen sprite readability and balance with a real controller
-- [ ] Replace procedural art with approved proper 64×64 coloured character sprites
+- [x] Change red Colin fuse from 2s to 0.9s with a brighter red pulsing warning
+- [x] Remove floating explosion-warning text
+- [x] Give all enemy deaths a stylised mushroom-cloud effect
+- [x] Keep damaging blast exclusive to explosive red Colin
+- [x] Remove pencil SNAP text while retaining breaking-pencil effect
+- [x] Otter X eyes, tumble/squash collapse, descending gravestone
+- [x] Game-over modal with recorded cause of death and elapsed survival
+- [x] Victory results panel
+- [x] Update automated smoke tests
+- [ ] Manual review of timing and readability under overlapping effects
+- [ ] Improve sprite art, sound and particle richness
 
 ## Next
 
-- [ ] Boss health/attack tuning, unique tells and extra effects
-- [ ] Sound for pencils snapping, aura and explosions
-- [ ] More square room layouts and map progression
+- [ ] Dedicated pixel sprites and polished death effects
+- [ ] More distinct attack audio/visual signatures
+- [ ] Difficulty and damage tuning for boss round

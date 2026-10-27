@@ -98,10 +98,11 @@ func _run() -> void:
     check(game.pending_bombs.has(red), "Red Colin leaves a bomb corpse")
     check(red.health == 0 and red.collision_layer == 0, "Bomb corpse is dead and non-colliding")
     check(game.kills == 1, "Red Colin counts immediately as a kill")
-    red._process(1.9)
-    check(game.pending_bombs.has(red), "Red corpse glows for two seconds")
+    check(is_equal_approx(red.explosion_delay, 0.9), "Red fuse lasts 0.9 seconds")
+    red._process(0.80)
+    check(game.pending_bombs.has(red), "Red corpse still pulsing before 0.9 seconds")
     red._process(0.11)
-    check(not game.pending_bombs.has(red), "Red corpse explodes after two seconds")
+    check(not game.pending_bombs.has(red), "Red corpse explodes after 0.9 seconds")
 
     game.queue_free()
     await process_frame

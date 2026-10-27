@@ -1,12 +1,13 @@
-# Manual test plan — Godot 4.5.2
+# Godot 4.5.2 manual test checklist
 
-1. Start a run. Wave 1 contains exactly **five** Colins: **3 yellow**, **1 red**, **1 blue**. All normal-sized variants show 10 HP.
-2. Defeat a yellow Colin. He disappears immediately and **never** explodes.
-3. Defeat a red Colin. He stays in place, pulses red for about **2 seconds**, then detonates in a **128px radius** and inflicts **1–10 damage** on every living Colin and the otter in range. Dead corpses cannot be attacked. A red Colin killed by an explosion produces a possible chain reaction.
-4. Approach a blue Colin. He should maintain distance and shoot a pencil about **once each second**, even when other Colins are nearby. A pencil hitting the otter deals a random **1–10 damage** and snaps. A pencil hitting a different Colin (yellow, red, blue or boss) damages them too. A pencil hitting a wall should snap without damage.
-5. Every wave 1–9 should contain **3 yellow, 1 red, 1 blue**, with randomized positions; wave transitions wait for red corpse explosions to resolve.
-6. On **round 10**, there should be **one oversized purple boss Colin plus four random minions**. The boss is at least double normal size, has **40 HP**, moves noticeably more slowly, fires pencils, and can life-drain the otter up close.
-7. Defeat the boss and four minions to reach **50 kills** and win. Otter death before then ends the run. Restart with R / A.
-8. Confirm the previous upgrades, 1% critical chance, health bars and floating combat text still function.
+1. Start play: 5 Colins, 12 otter HP, weapons and power-ups unchanged.
+2. Kill any yellow, blue or boss Colin: a short mushroom cloud appears at the death location, with **no area damage**.
+3. Kill red Colin: he flashes a more alarming red for **approximately 0.9 seconds** with **no text warning**, then produces a compact mushroom-shaped cloud and expanding ring. The 128px damaging radius still applies for 1–10 HP to the otter and living Colins.
+4. Red chain reactions still occur. Wave transition waits for red explosions to resolve; if the final enemy at 50 kills is red, victory also waits for the final blast.
+5. Watch pencils hit walls, the otter, and other Colins: pencils break into two halves and disappear, with no `SNAP!` text. Damage numbers continue to appear.
+6. Let the otter die from **life-drain**: otter's eyes become Xs, body tilts/squashes, tombstone falls beside him, and then game-over dialog appears. Cause states which variant's aura did the damage; elapsed time and kills are shown.
+7. Repeat dying to a **blue pencil**, **boss pencil**, and **red explosion** to verify accurate death causes.
+8. Restart from dialogue with the button, A/Cross or R. Victory also shows a results dialogue including time survived.
+9. Confirm 50 kills, boss round, critical doughnuts, health bars and upgrades still behave as before.
 
-Automated tests: `tests/waves_smoke.gd` and `tests/variants_smoke.gd` run in GitHub Actions with Godot 4.5.2.
+CI executes the full headless test suite; manual testing is recommended for animation timing and dialogue layout.

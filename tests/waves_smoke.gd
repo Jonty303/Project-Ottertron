@@ -108,9 +108,25 @@ func _run() -> void:
     var defeat_game = GAME.instantiate()
     root.add_child(defeat_game)
     await process_frame
-    defeat_game.player.take_damage(12)
+    defeat_game.player.take_damage(12, "Blue Colin's pencil")
     check(defeat_game._round_finished and not defeat_game._win,
         "Otter death ends game in defeat")
+    check(defeat_game.player.last_damage_source == "Blue Colin's pencil",
+        "Death cause is recorded")
+    check(defeat_game.player.art.is_dead, "Crossed eyes appear on death")
+    check(defeat_game.player.death_animation_started, "Collapse animation begins")
+    check(not defeat_game._game_over_overlay.visible,
+        "Game-over dialog waits until the gravestone lands")
+    defeat_game._death_sequence_remaining = 0.01
+    defeat_game._process(0.02)
+    check(is_instance_valid(defeat_game._tombstone), "Tombstone appears by the otter")
+    if is_instance_valid(defeat_game._tombstone):
+        defeat_game._tombstone.finish_drop()
+        check(defeat_game._game_over_overlay.visible, "Game-over dialog appears after stone lands")
+        check(defeat_game._game_over_details.text.contains("Blue Colin's pencil"),
+            "Dialog explains what killed the otter")
+        check(defeat_game._game_over_details.text.contains("Time survived:"),
+            "Dialog shows survival time")
     check(not defeat_game.player.is_physics_processing(),
         "Controls stop on defeat")
     var dead_game_kills: int = defeat_game.kills
@@ -198,6 +214,9 @@ func _run() -> void:
     check(nearby.health == 2, "Chain blast damages other living Colins")
     check(combat_game.pending_bombs.is_empty(), "All explosions eventually resolve")
     check(dummy.health == 2, "Enemies outside the radius are unharmed")
+    check(combat_game.get_children().any(func(node: Node) -> bool:
+        return node.get_script() == preload("res://scripts/mushroom_cloud.gd")),
+        "Enemy deaths create a mushroom cloud effect")
     combat_game.queue_free()
     await process_frame
 

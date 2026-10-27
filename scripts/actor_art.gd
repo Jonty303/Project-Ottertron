@@ -4,6 +4,7 @@ extends Node2D
 @export_enum("otter", "colin", "doughnut") var kind: String = "otter"
 @export var jumper_color: Color = Color("#e4ae37")
 var facing: Vector2 = Vector2.DOWN
+var is_dead: bool = false
 
 func set_facing(direction: Vector2) -> void:
     if direction.length_squared() > 0.01:
@@ -48,6 +49,14 @@ func _draw_otter() -> void:
 
     draw_circle(Vector2(0, 9), 15, cream)
     draw_circle(Vector2(shift, -8), 15, cream)
+    if is_dead:
+        # Crosses replace the living eyes and muzzle expression.
+        for eye_x in [-9.0, 9.0]:
+            var at := Vector2(eye_x + shift, -10.0)
+            draw_line(at + Vector2(-4, -4), at + Vector2(4, 4), eyes, 2.8)
+            draw_line(at + Vector2(-4, 4), at + Vector2(4, -4), eyes, 2.8)
+        draw_circle(Vector2(shift, -1), 4.5, dark_brown)
+        return
     draw_circle(Vector2(-9 + shift, -10), 4, eyes)
     draw_circle(Vector2(9 + shift, -10), 4, eyes)
     draw_circle(Vector2(-10 + shift, -11), 1.5, Color.WHITE)
