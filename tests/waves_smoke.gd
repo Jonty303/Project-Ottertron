@@ -14,6 +14,7 @@ func check(condition: bool, description: String) -> void:
         push_error("OTTERTRON TEST FAILED: " + description)
 
 func _run() -> void:
+    print("WAVE CHECK: beginning")
     var game = GAME.instantiate()
     root.add_child(game)
     await process_frame
@@ -73,6 +74,7 @@ func _run() -> void:
     shot.queue_free()
 
     for expected_wave in range(1, 11):
+        print("WAVE CHECK: wave ", expected_wave)
         check(game.wave == expected_wave, "Expected wave %d" % expected_wave)
         var bosses: Array = game.enemies.filter(func(enemy: Node2D) -> bool: return enemy.variant == "boss")
         if expected_wave == 10:
@@ -108,6 +110,7 @@ func _run() -> void:
             check(game._round_finished and game._win, "Ten waves cleared ends the game in victory")
             check(game.kills == 80, "Base ten-wave run has 80 kills")
             check(game._wave_timer <= 0.0, "No wave is scheduled after victory")
+    print("WAVE CHECK: cleared ten waves")
     game.queue_free()
     await process_frame
 
