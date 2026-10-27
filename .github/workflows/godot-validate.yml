@@ -54,5 +54,5 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./godot --headless --path . --script res://tests/environment_boons_smoke.gd 2>&1 | tee godot-environment.log
+          timeout 40s stdbuf -oL -eL ./godot --headless --path . --script res://tests/environment_boons_smoke.gd 2>&1 | tee godot-environment.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|OTTERTRON ENVIRONMENT TEST FAILED' godot-environment.log; then exit 1; fi

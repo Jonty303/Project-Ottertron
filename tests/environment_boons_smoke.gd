@@ -14,6 +14,7 @@ func check(ok: bool, message: String) -> void:
         push_error("OTTERTRON ENVIRONMENT TEST FAILED: " + message)
 
 func _run() -> void:
+    print("ENV TRACE: starting hazard tests")
     var game = GAME.instantiate()
     root.add_child(game)
     await process_frame
@@ -63,10 +64,12 @@ func _run() -> void:
     game.player.heal(99)
     check(game.player.health == game.player.max_health, "Health cannot exceed maximum")
 
+    print("ENV TRACE: hazard and healing assertions complete")
     game.queue_free()
     await process_frame
 
     # Drive two complete waves into a real boon selection.
+    print("ENV TRACE: starting boon wave tests")
     var boon_game = GAME.instantiate()
     root.add_child(boon_game)
     await process_frame
@@ -77,6 +80,7 @@ func _run() -> void:
     boon_game._wave_timer = 0.001
     await process_frame
     await process_frame
+    print("ENV TRACE: spawned wave 2")
     check(boon_game.wave == 2, "Second wave spawned")
     for enemy in boon_game.enemies.duplicate():
         enemy.explosion_chance = 0.0
@@ -85,6 +89,7 @@ func _run() -> void:
         "Second wave clear opens choice dialogue")
     check(boon_game._wave_timer < 0.0, "Wave pauses until boon is selected")
     check(boon_game.player.status_paused, "Player state pauses during choice")
+    print("ENV TRACE: choosing swarm")
     boon_game._choose_boon("swarm")
     check(not boon_game._boon_open, "Selecting closes the modal")
     check(boon_game.boons_chosen.size() == 1, "Choice recorded permanently")
@@ -94,6 +99,7 @@ func _run() -> void:
     boon_game._wave_timer = 0.001
     await process_frame
     await process_frame
+    print("ENV TRACE: spawned wave 3")
     check(boon_game.wave == 3, "Third wave spawns after boon")
     check(boon_game.enemies.size() == 7, "Five enemies increased by 25% rounded up to seven")
 
@@ -126,6 +132,7 @@ func _run() -> void:
         check(is_equal_approx(enemy.damage_multiplier, 1.25),
             "New enemies inherit global extra damage")
 
+    print("ENV TRACE: all assertions complete")
     boon_game.queue_free()
     await process_frame
 
