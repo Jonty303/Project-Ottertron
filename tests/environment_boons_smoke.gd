@@ -24,7 +24,10 @@ func _run() -> void:
     check(get_nodes_in_group("hazards").size() >= 8, "Spike traps and fire pits exist")
     var obstacle = get_nodes_in_group("obstacles")[0]
     check(obstacle.collision_layer == 8, "Obstacles physically block projectiles and actors")
-    check(game.player.get_node("Camera2D").limit_right == 868, "Camera stays inside bigger walls")
+    var cameras: Array = game.player.get_children().filter(func(node: Node) -> bool: return node is Camera2D)
+    check(cameras.size() == 1, "Player has a camera")
+    if cameras.size() == 1:
+        check(cameras[0].limit_right == 868, "Camera stays inside bigger walls")
 
     var spike = get_nodes_in_group("hazards").filter(
         func(node: Node) -> bool: return node.get_script().resource_path.ends_with("spike_trap.gd"))[0]
