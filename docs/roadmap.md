@@ -1,21 +1,22 @@
 # Roadmap
 
-## v0.6 — effects and game over
+## v0.7 — arena hazards and Chaos boons
 
-- [x] Change red Colin fuse from 2s to 0.9s with a brighter red pulsing warning
-- [x] Remove floating explosion-warning text
-- [x] Give all enemy deaths a stylised mushroom-cloud effect
-- [x] Keep damaging blast exclusive to explosive red Colin
-- [x] Remove pencil SNAP text while retaining breaking-pencil effect
-- [x] Otter X eyes, tumble/squash collapse, descending gravestone
-- [x] Game-over modal with recorded cause of death and elapsed survival
-- [x] Victory results panel
-- [x] Update automated smoke tests
-- [ ] Manual review of timing and readability under overlapping effects
-- [ ] Improve sprite art, sound and particle richness
+- [x] Expand square arena to 1792px, camera boundaries
+- [x] Rocks, plants and collision-blocked enemy/projectile paths
+- [x] Pop-up 2-HP spike traps that cooldown
+- [x] Fire pits with animated 1 HP × 5 second burn
+- [x] Burn death cause and otter flame animation
+- [x] Green healing pickup, healing cap, 20% chance to drop on Colin death if wounded
+- [x] Choice of paired bad/good global modifiers after waves 2,4,6,8
+- [x] Boon pausing and permanent stacked multipliers
+- [x] Extra enemies carried into later waves and boss wave; victory tied to tenth-round clear
+- [x] Add headless hazards/healing/boon integration tests
+- [ ] Confirm collisions, animations, UI navigation and gameplay feel with physical controller
 
-## Next
+## Future
 
-- [ ] Dedicated pixel sprites and polished death effects
-- [ ] More distinct attack audio/visual signatures
-- [ ] Difficulty and damage tuning for boss round
+- [ ] Adapt spawn position navigation around rock/plant obstacles
+- [ ] More terrain variants and environmental art
+- [ ] More creative/random boon combinations and scaling
+- [ ] Dedicated polished directional pixel sprites and richer sound

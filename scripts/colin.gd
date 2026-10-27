@@ -10,6 +10,8 @@ signal pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D)
 
 @export_enum("normal", "explosive", "ranged", "boss") var variant: String = "normal"
 @export var max_health: int = 10
+@export var health_multiplier: float = 1.0
+@export var damage_multiplier: float = 1.0
 @export var move_speed: float = 68.0
 @export var drain_start_range: float = 53.0
 @export var drain_break_range: float = 96.0
@@ -47,6 +49,7 @@ var _boss_size: float = 2.2
 
 func _ready() -> void:
     _configure_variant()
+    max_health = maxi(1, ceili(float(max_health) * health_multiplier))
     health = max_health
     health_bar.set_health(health, max_health)
     add_to_group("enemies")
@@ -135,7 +138,7 @@ func _physics_process(delta: float) -> void:
                 _drain_elapsed -= interval
                 var ramp_every: int = maxi(1, drain_ramp_every_ticks)
                 var increase: int = int(floor(float(_ticks_completed) / float(ramp_every)))
-                var damage: int = mini(drain_max_damage, drain_base_damage + increase)
+                var damage: int = maxi(1, ceili(float(mini(drain_max_damage, drain_base_damage + increase)) * damage_multiplier))
                 _ticks_completed += 1
                 var applied: int = target.take_damage(damage, _drain_damage_source())
                 if applied > 0:

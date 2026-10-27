@@ -49,3 +49,10 @@ jobs:
           set -o pipefail
           ./godot --headless --path . --script res://tests/variants_smoke.gd 2>&1 | tee godot-variants.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|OTTERTRON VARIANT TEST FAILED' godot-variants.log; then exit 1; fi
+
+      - name: Arena hazards healing and Chaos boon tests
+        shell: bash
+        run: |
+          set -o pipefail
+          ./godot --headless --path . --script res://tests/environment_boons_smoke.gd 2>&1 | tee godot-environment.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|OTTERTRON ENVIRONMENT TEST FAILED' godot-environment.log; then exit 1; fi

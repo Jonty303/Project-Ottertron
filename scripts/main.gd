@@ -10,10 +10,15 @@ const POWER_UP_SCENE: PackedScene = preload("res://scenes/power_up.tscn")
 const FLOATING_TEXT = preload("res://scripts/floating_text.gd")
 const MUSHROOM_CLOUD = preload("res://scripts/mushroom_cloud.gd")
 const TOMBSTONE = preload("res://scripts/tombstone.gd")
+const TERRAIN_OBSTACLE = preload("res://scripts/terrain_obstacle.gd")
+const SPIKE_TRAP = preload("res://scripts/spike_trap.gd")
+const FIRE_PIT = preload("res://scripts/fire_pit.gd")
+const HEALTH_PICKUP = preload("res://scripts/health_pickup.gd")
 
-const ROOM_SIDE: float = 960.0
+const ROOM_SIDE: float = 1792.0
 const WALL_THICKNESS: float = 28.0
-const TARGET_KILLS: int = 50
+const TARGET_KILLS: int = 50 # Base 10-wave objective; boons can raise actual kills.
+const LAST_WAVE: int = 10
 const INITIAL_WAVE_SIZE: int = 5
 const FOLLOWUP_WAVE_SIZE: int = 5
 const WAVE_DELAY: float = 1.0
@@ -22,6 +27,12 @@ const ENEMY_SPAWN_SEPARATION: float = 90.0
 
 var player
 var hud: Label
+var _boon_overlay: ColorRect
+var _boon_open: bool = false
+var boons_chosen: Array[String] = []
+var enemy_spawn_multiplier: float = 1.0
+var enemy_health_multiplier: float = 1.0
+var enemy_damage_multiplier: float = 1.0
 var _game_over_overlay: ColorRect
 var _game_over_title: Label
 var _game_over_details: Label
@@ -54,11 +65,16 @@ func _ready() -> void:
     player.damage_taken.connect(_on_player_damage_taken)
     player.doughnut_stats_changed.connect(_on_doughnut_stats_changed)
     player.defeated.connect(_on_player_defeated)
+    _place_environment()
 
     var camera := Camera2D.new()
     camera.zoom = Vector2.ONE
     camera.position_smoothing_enabled = true
     camera.position_smoothing_speed = 5.0
+    camera.limit_left = -int(ROOM_SIDE * 0.5) + int(WALL_THICKNESS)
+    camera.limit_right = int(ROOM_SIDE * 0.5) - int(WALL_THICKNESS)
+    camera.limit_top = -int(ROOM_SIDE * 0.5) + int(WALL_THICKNESS)
+    camera.limit_bottom = int(ROOM_SIDE * 0.5) - int(WALL_THICKNESS)
     player.add_child(camera)
     camera.make_current()
 
@@ -66,7 +82,7 @@ func _ready() -> void:
     add_child(interface)
     hud = Label.new()
     hud.position = Vector2(24, 16)
-    hud.add_theme_font_size_override("font_size", 20)
+    hud.add_theme_font_size_override("font_size", 17)
     hud.add_theme_color_override("font_outline_color", Color("#0b1218"))
     hud.add_theme_constant_override("outline_size", 3)
     interface.add_child(hud)
@@ -77,12 +93,62 @@ func _ready() -> void:
     instructions.add_theme_font_size_override("font_size", 15)
     interface.add_child(instructions)
     _create_game_over_dialog(interface)
+    _create_boon_dialog(interface)
 
     # Make all three power-up types available immediately for testing.
     _spawn_powerup("damage", Vector2(-105, -125))
     _spawn_powerup("speed", Vector2(0, -155))
     _spawn_powerup("size", Vector2(105, -125))
+    _spawn_health_pickup(Vector2(-200, 180))
     _spawn_wave()
+
+
+func _place_environment() -> void:
+    # Avoid the central starting area; props collide with actors and projectiles.
+    var rocks: Array[Vector2] = [
+        Vector2(-580, -370), Vector2(-270, -570), Vector2(300, -540),
+        Vector2(630, -260), Vector2(-590, 250), Vector2(380, 365),
+        Vector2(640, 540)
+    ]
+    var plants: Array[Vector2] = [
+        Vector2(-660, 0), Vector2(-350, 485), Vector2(90, 570),
+        Vector2(560, 65), Vector2(150, -420), Vector2(-350, 365)
+    ]
+    for at in rocks:
+        var obstacle = TERRAIN_OBSTACLE.new()
+        obstacle.kind = "rock"
+        obstacle.collision_radius = 35.0
+        obstacle.position = at
+        add_child(obstacle)
+    for at in plants:
+        var obstacle = TERRAIN_OBSTACLE.new()
+        obstacle.kind = "plant"
+        obstacle.collision_radius = 39.0
+        obstacle.position = at
+        add_child(obstacle)
+
+    for at in [
+        Vector2(-435, -145), Vector2(470, -405), Vector2(305, 610),
+        Vector2(-640, 550), Vector2(685, 260)
+    ]:
+        var spikes = SPIKE_TRAP.new()
+        spikes.position = at
+        add_child(spikes)
+
+    for at in [Vector2(-315, 80), Vector2(475, 245), Vector2(115, -655)]:
+        var fire = FIRE_PIT.new()
+        fire.position = at
+        add_child(fire)
+
+func _spawn_health_pickup(at: Vector2) -> void:
+    var pickup = HEALTH_PICKUP.new()
+    pickup.position = at
+    add_child(pickup)
+    pickup.collected.connect(_on_health_pickup_collected)
+
+func _on_health_pickup_collected(at: Vector2, amount: int) -> void:
+    _floating_text(at + Vector2(0, -40), "+%d HP" % amount, Color("#99f9ac"))
+    _update_hud()
 
 func _draw() -> void:
     var start: float = -ROOM_SIDE / 2.0
@@ -101,6 +167,8 @@ func _process(delta: float) -> void:
                 _start_tombstone_drop()
         elif _game_over_overlay.visible and (Input.is_key_pressed(KEY_R) or _restart_button_pressed()):
             get_tree().reload_current_scene()
+        return
+    if _boon_open:
         return
     _elapsed_survival += delta
     if _wave_timer > 0.0:
@@ -126,15 +194,17 @@ func _create_wall(at: Vector2, wall_size: Vector2) -> void:
     add_child(body)
 
 func _spawn_wave() -> void:
-    if _round_finished or kills >= TARGET_KILLS or not enemies.is_empty() or not pending_bombs.is_empty():
+    if _round_finished or wave >= LAST_WAVE or _boon_open or not enemies.is_empty() or not pending_bombs.is_empty():
         return
     wave += 1
     var requested: int = INITIAL_WAVE_SIZE if wave == 1 else FOLLOWUP_WAVE_SIZE
     var roster: Array[String] = _build_wave_roster()
-    var count: int = mini(requested, TARGET_KILLS - kills)
+    var count: int = roster.size()
     for i in range(count):
         var enemy = COLIN_SCENE.instantiate()
         enemy.variant = roster[i]
+        enemy.health_multiplier = enemy_health_multiplier
+        enemy.damage_multiplier = enemy_damage_multiplier
         enemy.position = _find_enemy_spawn()
         enemy.target = player
         add_child(enemy)
@@ -159,8 +229,14 @@ func _build_wave_roster() -> Array[String]:
             roster.append(_roll_minion_type())
     else:
         roster.assign(["normal", "normal", "normal", "explosive", "ranged"])
+    var extra: int = maxi(0, ceili(float(requested_wave_size()) * enemy_spawn_multiplier) - roster.size())
+    for i in range(extra):
+        roster.append(_roll_minion_type())
     roster.shuffle()
     return roster
+
+func requested_wave_size() -> int:
+    return INITIAL_WAVE_SIZE if wave == 1 else FOLLOWUP_WAVE_SIZE
 
 func _roll_minion_type() -> String:
     var roll: float = _rng.randf()
@@ -197,6 +273,12 @@ func _is_good_enemy_spawn(candidate: Vector2) -> bool:
     for item in get_tree().get_nodes_in_group("power_ups"):
         if candidate.distance_to(item.position) < 50.0:
             return false
+    for item in get_tree().get_nodes_in_group("obstacles"):
+        if candidate.distance_to(item.position) < 94.0:
+            return false
+    for item in get_tree().get_nodes_in_group("hazards"):
+        if candidate.distance_to(item.position) < 78.0:
+            return false
     return true
 
 func _on_enemy_defeated(enemy: Node2D) -> void:
@@ -210,6 +292,8 @@ func _on_enemy_defeated(enemy: Node2D) -> void:
     else:
         _spawn_mushroom_cloud(enemy.global_position, false, 0.0,
             1.55 if enemy.variant == "boss" else 1.0)
+    if not _round_finished and player.health < player.max_health and _rng.randf() < 0.20:
+        _spawn_health_pickup(enemy.global_position)
     _maybe_clear_wave()
     _update_hud()
 
@@ -217,22 +301,26 @@ func _maybe_clear_wave() -> void:
     # Delayed explosions must resolve before another wave enters the room.
     if _round_finished or not enemies.is_empty() or not pending_bombs.is_empty():
         return
-    if kills >= TARGET_KILLS:
+    if wave >= LAST_WAVE:
         _end_round(true)
         return
-    if _wave_timer > 0.0:
+    if _wave_timer > 0.0 or _boon_open:
         return
-    _wave_timer = WAVE_DELAY
     _floating_text(player.global_position + Vector2(0, -82),
         "WAVE CLEARED", Color("#c5f3b7"))
     _spawn_wave_reward()
+    if wave % 2 == 0:
+        _offer_boon()
+    else:
+        _wave_timer = WAVE_DELAY
 
 func _on_explosion_requested(at: Vector2, radius: float, damage: int, bomb: Node2D) -> void:
     if not pending_bombs.has(bomb):
         return
     if not _round_finished:
         _spawn_mushroom_cloud(at, true, radius)
-        # A single random 1-10 HP value is rolled per explosion and applied
+        damage = maxi(1, ceili(float(damage) * bomb.damage_multiplier))
+        # A single random base 1-10 HP value, scaled by global enemy damage.
         # to each living target within 128px; the dead owner is excluded.
         if player.health > 0 and player.global_position.distance_to(at) <= radius:
             player.take_damage(damage, "Red Colin's explosion")
@@ -284,8 +372,8 @@ func _on_player_fire(direction: Vector2) -> void:
         return
     var shot = DOUGHNUT_SCENE.instantiate()
     shot.direction = direction
-    shot.damage = player.doughnut_damage
-    shot.speed = player.doughnut_speed
+    shot.damage = maxi(1, ceili(float(player.doughnut_damage) * player.doughnut_damage_multiplier))
+    shot.speed = player.doughnut_speed * player.doughnut_speed_multiplier
     shot.size_multiplier = player.doughnut_size
     shot.critical_chance = player.doughnut_critical_chance
     shot.position = player.position + direction * (26.0 + 12.0 * player.doughnut_size)
@@ -298,6 +386,7 @@ func _on_pencil_requested(at: Vector2, direction: Vector2, shooter: Node2D) -> v
     var pencil = PENCIL_SCENE.instantiate()
     pencil.direction = direction
     pencil.shooter = shooter
+    pencil.damage_multiplier = shooter.damage_multiplier
     pencil.global_position = at
     add_child(pencil)
     pencil.damage_dealt.connect(_on_pencil_damage_dealt)
@@ -368,6 +457,9 @@ func _end_round(victory: bool) -> void:
     _round_finished = true
     _win = victory
     _wave_timer = -1.0
+    _boon_open = false
+    if is_instance_valid(_boon_overlay):
+        _boon_overlay.hide()
     _survival_at_end = _elapsed_survival
     player.set_physics_process(false)
     for enemy in enemies:
@@ -411,6 +503,95 @@ func _start_tombstone_drop() -> void:
 func _format_survival(seconds: float) -> String:
     var total: int = maxi(0, int(floor(seconds)))
     return "%02d:%02d" % [total / 60, total % 60]
+
+
+func _create_boon_dialog(layer: CanvasLayer) -> void:
+    _boon_overlay = ColorRect.new()
+    _boon_overlay.color = Color(0.045, 0.035, 0.085, 0.87)
+    _boon_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    _boon_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    layer.add_child(_boon_overlay)
+    _boon_overlay.hide()
+
+    var panel := PanelContainer.new()
+    panel.position = Vector2(205, 127)
+    panel.custom_minimum_size = Vector2(742, 466)
+    panel.size = Vector2(742, 466)
+    var style := StyleBoxFlat.new()
+    style.bg_color = Color("#202238")
+    style.border_color = Color("#cda3f2")
+    style.set_border_width_all(3)
+    style.set_corner_radius_all(15)
+    style.set_content_margin_all(24)
+    panel.add_theme_stylebox_override("panel", style)
+    _boon_overlay.add_child(panel)
+
+    var content := VBoxContainer.new()
+    content.add_theme_constant_override("separation", 13)
+    panel.add_child(content)
+    var heading := Label.new()
+    heading.text = "A CHAOS BOON"
+    heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    heading.add_theme_font_size_override("font_size", 31)
+    heading.add_theme_color_override("font_color", Color("#e5bcff"))
+    content.add_child(heading)
+    var subtitle := Label.new()
+    subtitle.text = "Choose one gift with a price. Both effects last until this run ends."
+    subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    subtitle.add_theme_font_size_override("font_size", 17)
+    content.add_child(subtitle)
+
+    var choices := [
+        ["swarm", "+25% enemies next waves    /    +25% player doughnut damage"],
+        ["fortitude", "+30% enemy health    /    +20% otter movement speed"],
+        ["ferocity", "+25% enemy damage    /    +25% doughnut flight speed"]
+    ]
+    var first_button: Button
+    for entry in choices:
+        var button := Button.new()
+        button.text = entry[1]
+        button.custom_minimum_size = Vector2(648, 73)
+        button.add_theme_font_size_override("font_size", 17)
+        button.pressed.connect(_choose_boon.bind(entry[0]))
+        content.add_child(button)
+        if first_button == null:
+            first_button = button
+    _boon_overlay.set_meta("first_button", first_button)
+
+func _offer_boon() -> void:
+    if _round_finished or _boon_open:
+        return
+    _boon_open = true
+    _wave_timer = -1.0
+    player.status_paused = true
+    for projectile in get_tree().get_nodes_in_group("projectiles"):
+        projectile.queue_free()
+    _boon_overlay.show()
+    var focus_button = _boon_overlay.get_meta("first_button")
+    focus_button.grab_focus.call_deferred()
+    _update_hud()
+
+func _choose_boon(kind: String) -> void:
+    if not _boon_open or _round_finished:
+        return
+    match kind:
+        "swarm":
+            enemy_spawn_multiplier *= 1.25
+            player.doughnut_damage_multiplier *= 1.25
+        "fortitude":
+            enemy_health_multiplier *= 1.30
+            player.movement_multiplier *= 1.20
+        "ferocity":
+            enemy_damage_multiplier *= 1.25
+            player.doughnut_speed_multiplier *= 1.25
+        _:
+            return
+    boons_chosen.append(kind)
+    _boon_open = false
+    _boon_overlay.hide()
+    player.status_paused = false
+    _wave_timer = WAVE_DELAY
+    _update_hud()
 
 func _create_game_over_dialog(layer: CanvasLayer) -> void:
     _game_over_overlay = ColorRect.new()
@@ -460,8 +641,8 @@ func _show_game_over_dialog() -> void:
         return
     if _win:
         _game_over_title.text = "VICTORY!"
-        _game_over_details.text = "All 50 Colins defeated!\nTime survived: %s\nWaves cleared: %d" % [
-            _format_survival(_survival_at_end), wave]
+        _game_over_details.text = "Boss defeated; all 10 waves cleared!\nEnemies defeated: %d (base goal %d)\nTime survived: %s" % [
+            kills, TARGET_KILLS, _format_survival(_survival_at_end)]
     else:
         _game_over_title.text = "GAME OVER"
         _game_over_details.text = "Cause of death: %s\nTime survived: %s\nColins defeated: %d / %d" % [
@@ -477,13 +658,17 @@ func _floating_text(at: Vector2, message: String, color: Color) -> void:
 func _update_hud() -> void:
     if hud == null or not is_instance_valid(player):
         return
-    var stats: String = "OTTER %d/%d HP   |   KILLS %d/%d   |   WAVE %d   |   LEFT %d\nDOUGHNUT %d DMG   |   %d px/s   |   %.2fx SIZE   |   CRIT 1%%   |   BOMBS %d" % [
-        player.health, player.max_health, kills, TARGET_KILLS,
-        wave, enemies.size(), player.doughnut_damage, roundi(player.doughnut_speed), player.doughnut_size,
-        pending_bombs.size()
+    var stats: String = "OTTER %d/%d HP | KILLS %d (BASE %d) | WAVE %d/%d | LEFT %d | BOONS %d\nDOUGHNUT %d DMG | %d px/s | %.2fx SIZE | CRIT 1%% | BOMBS %d" % [
+        player.health, player.max_health, kills, TARGET_KILLS, wave, LAST_WAVE,
+        enemies.size(), boons_chosen.size(),
+        maxi(1, ceili(float(player.doughnut_damage) * player.doughnut_damage_multiplier)),
+        roundi(player.doughnut_speed * player.doughnut_speed_multiplier),
+        player.doughnut_size, pending_bombs.size()
     ]
     if _round_finished:
         hud.text = stats
+    elif _boon_open:
+        hud.text = stats + "\nCHOOSE YOUR CHAOS BOON"
     elif _wave_timer > 0.0:
         hud.text = stats + "\nWAVE CLEAR — NEXT WAVE INCOMING"
     else:

@@ -8,6 +8,7 @@ signal damage_dealt(at: Vector2, amount: int, victim_is_player: bool)
 @export var lifetime: float = 2.5
 @export var minimum_damage: int = 1
 @export var maximum_damage: int = 10
+@export var damage_multiplier: float = 1.0
 
 var direction: Vector2 = Vector2.RIGHT
 var shooter: Node2D
@@ -35,7 +36,7 @@ func _on_body_entered(body: Node2D) -> void:
     if body.has_method("take_damage"):
         var low: int = maxi(1, mini(minimum_damage, maximum_damage))
         var high: int = maxi(low, maxi(minimum_damage, maximum_damage))
-        var attempted: int = randi_range(low, high)
+        var attempted: int = maxi(1, ceili(float(randi_range(low, high)) * damage_multiplier))
         var applied: int = 0
         if body.is_in_group("player"):
             var source: String = "Boss Colin's pencil" if is_instance_valid(shooter) and shooter.variant == "boss" else "Blue Colin's pencil"

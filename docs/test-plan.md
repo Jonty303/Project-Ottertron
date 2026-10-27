@@ -1,13 +1,15 @@
-# Godot 4.5.2 manual test checklist
+# Manual test plan — Godot 4.5.2
 
-1. Start play: 5 Colins, 12 otter HP, weapons and power-ups unchanged.
-2. Kill any yellow, blue or boss Colin: a short mushroom cloud appears at the death location, with **no area damage**.
-3. Kill red Colin: he flashes a more alarming red for **approximately 0.9 seconds** with **no text warning**, then produces a compact mushroom-shaped cloud and expanding ring. The 128px damaging radius still applies for 1–10 HP to the otter and living Colins.
-4. Red chain reactions still occur. Wave transition waits for red explosions to resolve; if the final enemy at 50 kills is red, victory also waits for the final blast.
-5. Watch pencils hit walls, the otter, and other Colins: pencils break into two halves and disappear, with no `SNAP!` text. Damage numbers continue to appear.
-6. Let the otter die from **life-drain**: otter's eyes become Xs, body tilts/squashes, tombstone falls beside him, and then game-over dialog appears. Cause states which variant's aura did the damage; elapsed time and kills are shown.
-7. Repeat dying to a **blue pencil**, **boss pencil**, and **red explosion** to verify accurate death causes.
-8. Restart from dialogue with the button, A/Cross or R. Victory also shows a results dialogue including time survived.
-9. Confirm 50 kills, boss round, critical doughnuts, health bars and upgrades still behave as before.
+1. Run the game. The arena should be much bigger (1792×1792), with camera tracking the otter but not showing the void outside the walls.
+2. Walk or shoot into rocks and shrubs. They should stop movement and both pencil/doughnut projectiles. Colins should not spawn inside obstacles.
+3. Walk onto a spike plate: spikes pop up, otter takes **2 damage** after about 0.12s, the spikes retract and cannot immediately re-trigger. After leaving and later returning, they should trigger again.
+4. Step into a fire pit: animated flames appear around the otter; **no immediate damage**, then **1 HP lost every second for five ticks**. Run away—burn continues. Re-enter a fire pit while burning to refresh the duration. Burn may kill otter and should yield `Fire pit burn` in game-over dialog.
+5. Lose some health and collect a glowing green heart: health restores **3**, never above **12**. When full, pickup remains available. After hurting the otter, occasionally a defeated Colin drops a green heart (~20% chance).
+6. Clear wave 1: next wave should start after a second. Clear wave 2: a Chaos boon selection blocks the next wave until a choice is made. The interface should accept controller or mouse interaction.
+7. Choose **Swarm**: wave 3 should spawn **7 instead of 5** Colins (25% increase, rounded up); doughnuts deal 25% more base damage. This persists across future waves.
+8. In a separate run or later boon offer, choose **Fortitude**: new Colins receive 30% more HP, otter movement is 20% faster.
+9. Choose **Ferocity**: enemies do 25% more damage (life drain, pencils, red explosion); doughnuts travel 25% faster. Modifiers stack multiplicatively on repeated selections. Every other wave through wave 8 offers another choice.
+10. Reach wave 10: boss remains plus at least four minions (possibly extra random minions from Swarm). Victory occurs only after **everyone** in wave 10 dies and all red corpses have exploded, even if kill counter went beyond 50.
+11. Confirm game-over tombstone/cause/time, controller restart, critical hits, boss and pencil behaviour survive this update.
 
-CI executes the full headless test suite; manual testing is recommended for animation timing and dialogue layout.
+CI runs `tests/environment_boons_smoke.gd` plus prior smoke tests under Godot 4.5.2.

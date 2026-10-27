@@ -13,6 +13,9 @@ const MOVE_DEADZONE: float = 0.18
 const FIRE_INTERVAL: float = 0.20
 
 @export var max_health: int = 12
+@export var movement_multiplier: float = 1.0
+@export var doughnut_damage_multiplier: float = 1.0
+@export var doughnut_speed_multiplier: float = 1.0
 @export var doughnut_damage: int = 1
 @export_range(0.0, 1.0, 0.001) var doughnut_critical_chance: float = 0.01
 @export var doughnut_speed: float = 315.0
@@ -23,6 +26,9 @@ var health: int = 12
 var last_damage_source: String = "Unknown cause"
 var death_animation_started: bool = false
 var _fire_cooldown: float = 0.0
+var burn_ticks_left: int = 0
+var _burn_elapsed: float = 0.0
+var status_paused: bool = false
 
 @onready var art = $Art
 @onready var health_bar = $HealthBar
@@ -33,6 +39,10 @@ func _ready() -> void:
     health_bar.set_health(health, max_health)
 
 func _physics_process(delta: float) -> void:
+    if health <= 0 or status_paused:
+        velocity = Vector2.ZERO
+        return
+    _tick_burn(delta)
     if health <= 0:
         velocity = Vector2.ZERO
         return
@@ -47,7 +57,7 @@ func _physics_process(delta: float) -> void:
             float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
         ).normalized()
 
-    velocity = movement.limit_length(1.0) * MOVE_SPEED
+    velocity = movement.limit_length(1.0) * MOVE_SPEED * movement_multiplier
     move_and_slide()
 
     var aim: Vector2 = _stick(JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y)
@@ -116,3 +126,28 @@ func begin_death_animation() -> void:
     collapse.tween_property(art, "rotation", 1.40, 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
     collapse.tween_property(art, "scale", Vector2(1.12, 0.62), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
     collapse.tween_property(art, "position", Vector2(0, 17), 0.48).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func apply_burn(ticks: int = 5) -> void:
+    if health <= 0:
+        return
+    burn_ticks_left = maxi(0, ticks)
+    _burn_elapsed = 0.0
+
+func _tick_burn(delta: float) -> void:
+    if burn_ticks_left <= 0:
+        return
+    _burn_elapsed += delta
+    while _burn_elapsed >= 1.0 and burn_ticks_left > 0 and health > 0:
+        _burn_elapsed -= 1.0
+        burn_ticks_left -= 1
+        take_damage(1, "Fire pit burn")
+
+func heal(amount: int) -> int:
+    if health <= 0 or amount <= 0:
+        return 0
+    var restored: int = mini(amount, max_health - health)
+    health += restored
+    health_bar.set_health(health, max_health)
+    if restored > 0:
+        health_changed.emit(health)
+    return restored

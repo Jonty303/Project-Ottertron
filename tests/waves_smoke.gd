@@ -93,11 +93,16 @@ func _run() -> void:
         check(game.enemies.is_empty(), "All enemies cleared from wave %d" % expected_wave)
         check(game.kills == expected_wave * 5, "Cumulative kills after wave %d" % expected_wave)
         if expected_wave < 10:
-            check(game._wave_timer > 0.0, "Next wave is scheduled after clearing wave %d" % expected_wave)
+            if expected_wave % 2 == 0:
+                check(game._boon_open, "Chaos boon offered after even wave %d" % expected_wave)
+                check(game._wave_timer <= 0.0, "Wave pauses for the boon")
+                game._choose_boon("fortitude")
+                check(not game._boon_open, "Boon selection closes the choice")
+            check(game._wave_timer > 0.0, "Next wave schedules after clearing wave %d" % expected_wave)
             game._wave_timer = 0.001
             await process_frame
             await process_frame
-            check(game.enemies.size() == 5, "Exactly five more Colins spawned")
+            check(game.enemies.size() == 5, "Five enemies spawn when extra-enemy boon not selected")
         else:
             check(game._round_finished and game._win, "50 kills ends the game in victory")
             check(game.kills == 50, "Victory occurs on exactly 50 kills")
